@@ -29,13 +29,17 @@ For example, in the preprocessor section of `runtime/src/kmp_platform.h` from [O
 #elif defined __aarch64__
 #undef KMP_ARCH_AARCH64
 #define KMP_ARCH_AARCH64 1
-
 ...
+
 ```
 
 It first detects OS type, which is a UNIX type, and then it checks compiler architecture flags, such as `__i386` or `__aarch64__` to set up its conditional compilation flags for later conditional compilation purposes.
 
-Besides that, this preprocessor detection trick can be also used by CMake build scripts. This [cmake snippet](0) that is used by [OpenMP](0) to detect compiler architecture:
+But why do all of those conditional flags start with `KMP`, instead of `OMP`? Besides that, this implementation is contributed by Intel, and why those flags don't start with I for Intel?
+
+I googled for a long time and got no good anwser. Therefore, I asked a [question in StackOverflow](https://stackoverflow.com/questions/59333281/what-does-k-in-kmp-affinity-mean). It turns out that it doesn't stand for Kernel but [Kuck](https://en.wikipedia.org/wiki/David_Kuck), who founded Kuck and Associates (KAI) in 1979 to build a line of industry-standard optimizing compilers especially focused upon exploiting parallelism. Later, KAI is aquired by Intel that's why even though this is
+
+Let's get back to our topic. this preprocessor detection trick can be also used by CMake build scripts. This [cmake snippet](0) that is used by [OpenMP](0) to detect compiler architecture:
 
 ```cmake
 function(libomp_get_architecture return_arch)
