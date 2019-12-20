@@ -37,7 +37,9 @@ It first detects OS type, which is a UNIX type, and then it checks compiler arch
 
 But why do all of those conditional flags start with `KMP`, instead of `OMP`? Besides that, this implementation is contributed by Intel, and why those flags don't start with I for Intel?
 
-I googled for a long time and got no good anwser. Therefore, I asked a [question in StackOverflow](https://stackoverflow.com/questions/59333281/what-does-k-in-kmp-affinity-mean). It turns out that it doesn't stand for Kernel but [Kuck](https://en.wikipedia.org/wiki/David_Kuck), who founded Kuck and Associates (KAI) in 1979 to build a line of industry-standard optimizing compilers especially focused upon exploiting parallelism. Later, KAI is aquired by Intel that's why even though this is
+I googled for a long time and got no good anwser. Therefore, I asked a [question in StackOverflow](https://stackoverflow.com/questions/59333281/what-does-k-in-kmp-affinity-mean). It turns out that it doesn't stand for [Kernel](https://superuser.com/questions/1087714/why-do-process-names-start-with-the-letter-k-in-linux), which it very common in Linux world. But K stands for [Kuck](https://en.wikipedia.org/wiki/David_Kuck),
+> who founded Kuck and Associates (KAI) in 1979 to build a line of industry-standard optimizing compilers especially focused upon exploiting parallelism. Later,
+KAI is aquired by Intel that's why even though this is Intel's implementation but it's doesn't start with I from Intel.
 
 Let's get back to our topic. this preprocessor detection trick can be also used by CMake build scripts. This [cmake snippet](0) that is used by [OpenMP](0) to detect compiler architecture:
 
@@ -120,7 +122,7 @@ libomp_detect_arch.c:4:2: error: ARCHITECTURE=x86_64
  ^
 ```
 
-it turns out it does no effect for specifying architecture for compilation.
+it turns out that it does no effect for specifying architecture for compilation.
 
 [0]: https://github.com/llvm/llvm-project/blob/0b969fa9ccf595abc31942e5d14be784707e960c/openmp/runtime/cmake/LibompGetArchitecture.cmake#L16
 [1]: https://github.com/apple/turicreate

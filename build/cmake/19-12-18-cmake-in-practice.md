@@ -33,13 +33,7 @@ Initially, I thought the job should be fairly easy. Adding a `add_subdirectory()
 
 The reason not to invest much time on CMake is that wrting build scripts in most cases is one time thing. Once you get it working, you probably won't have a second chance to look at it again as long as it works (not even working well). Maybe after a long time, team decides to upgrade the package, you may come back and do the job again. When you look at the build script again, it looks a like a long distant relative visiting you during Chrismas. Well, It turns out that's the worst decision I have made through this project.
 
-The concept I should've mastered before I read through OpenMP CmakeLists.txt are if-else, macros and variable scopes.
-
-### if-else
-
-### macros
-
-### scopes
+The concept I should've mastered before I read through OpenMP CmakeLists.txt are if-else, macros and variable scopes. I have another post called [CMake 101](19-12-19-cnake-101.md) to cover these topics.
 
 ---
 
