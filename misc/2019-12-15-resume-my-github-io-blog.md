@@ -21,6 +21,8 @@ docker run -p 8080:4000 -v $(pwd):/site bretfisher/jekyll-serve
 
 Bare metal installation of jekyll on a fresh Linux container is also viable. Just make sure the jekyll server is listening on [0.0.0.0, instead of 127.0.0.1](3).
 
+If for security reason you cannot use `0.0.0.0`, you can use [ssh tunneling to forward traffic to docker](https://stackoverflow.com/questions/52321269/how-to-reach-docker-container-localhost-from-mac).
+
 ---
 
 ## motivation to resume my blog
@@ -77,7 +79,15 @@ I feel very excited to see my blog running locally! I provided `localhost:5000` 
 
 I already bind the ports from host to container, and why the container cannot be reached?
 
-Since I used docker-for-Mac client, I checked [networking features](4) documentation. It shows that I'm using the right command `-p` to do the port-binding. What this [hello world](https://github.com/karthequian/docker-helloworld/blob/a28dd5245c9347905330d0b16c36ddee41af76e1/Dockerfile#L45) does is just use docker command `EXPOSE 80`, which should be the same thing as `-p`.
+Since I used docker-for-Mac client, I checked [networking features](4) documentation. It shows that I'm using the right command `-p` to do the port-binding to the host, which creates a firewall rule which maps a container port to a port on the Docker host.
+
+What this [hello world](https://github.com/karthequian/docker-helloworld/blob/a28dd5245c9347905330d0b16c36ddee41af76e1/Dockerfile#L45) does is just use docker command `EXPOSE 80`, which should be the same thing as `-p`.
+
+Under the hood, it forwards the port from host to container. And we can [get the port mappings](https://stackoverflow.com/questions/32444612/how-to-get-the-mapped-port-on-host-from-a-docker-container),
+
+```bash
+docker port container_id
+```
 
 ### ping container using its IP
 
@@ -94,6 +104,8 @@ Okay, it's mysterious, probably I should find the ip address to ping that `ip:po
 docker network ls
 
 ```
+
+The `none` network driver is the simplest, which disable all networking of the container.
 
 ### host network
 
@@ -114,9 +126,24 @@ Still from this [doc](https://docs.docker.com/docker-for-mac/networking/):
 
 From StackOverflow, the reason for this behavior is that [xhyve vm inside Docker for Mac hasn't no Network Adapter](https://stackoverflow.com/questions/41819391/can-not-ping-docker-in-macos). I'm not an expert in networks so I'd like to give up routing traffic to container's IP.
 
+![docker mac desktop](https://docs.docker.com/docker-for-mac/images/docker-for-mac-install.png)
+
 Bridge network is [used by default by docker](https://docs.docker.com/network/), but what is bridge network? And [how container connects to host through networking](https://www.docker.com/blog/understanding-docker-networking-drivers-use-cases/)?
 
 ![docker linux bridge](http://img.scoop.it/bmExZyvGWidultcwx9hCb7nTzqrqzN7Y9aBZTaXoQ8Q=)
+
+https://docs.docker.com/v17.09/engine/userguide/networking/#the-default-bridge-network
+
+since `ip addr show` and `ifconfig`
+
+To inspect the network ip used by the container, I can use
+
+```bash
+docker network inspect bridge
+```
+
+https://www.tldp.org/HOWTO/IP-Masquerade-HOWTO/ipmasq-background2.5.html
+[masquerade](https://www.tldp.org/HOWTO/IP-Masquerade-HOWTO/ipmasq-background2.1.html)
 
 ### binding the correct IP
 
