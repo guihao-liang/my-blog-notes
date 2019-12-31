@@ -101,11 +101,15 @@ Okay, it's mysterious, probably I should find the ip address to ping that `ip:po
 ### network drivers
 
 ```bash
-docker network ls
+$ docker network ls
+NETWORK ID          NAME                DRIVER              SCOPE
+19f6b73480fb        bridge              bridge              local
+f5a055f5b740        host                host                local
+102cb83107c9        none                null                local
 
 ```
 
-The `none` network driver is the simplest, which disable all networking of the container.
+The `none` network driver is the simplest, which disable all networking of the container. Let's talk about `host` and `bridge`.
 
 ### host network
 
@@ -117,39 +121,133 @@ That should work but it didn't. When I continued to read the doc, it says **host
 
 ### bridge network
 
-Still from this [doc](https://docs.docker.com/docker-for-mac/networking/):
-
-> Q: There is no docker0 bridge on macOS</br>
-> A: Because of the way networking is implemented in Docker Desktop for Mac, you cannot see a docker0 interface on the host. This interface is actually within the virtual machine.
-
-`docker0` is the network bridge driver that is used by the container and it's not visable by the host.
-
-From StackOverflow, the reason for this behavior is that [xhyve vm inside Docker for Mac hasn't no Network Adapter](https://stackoverflow.com/questions/41819391/can-not-ping-docker-in-macos). I'm not an expert in networks so I'd like to give up routing traffic to container's IP.
-
 ![docker mac desktop](https://docs.docker.com/docker-for-mac/images/docker-for-mac-install.png)
 
 Bridge network is [used by default by docker](https://docs.docker.com/network/), but what is bridge network? And [how container connects to host through networking](https://www.docker.com/blog/understanding-docker-networking-drivers-use-cases/)?
 
 ![docker linux bridge](http://img.scoop.it/bmExZyvGWidultcwx9hCb7nTzqrqzN7Y9aBZTaXoQ8Q=)
 
-https://docs.docker.com/v17.09/engine/userguide/networking/#the-default-bridge-network
+The intial guess of mine is that the [bridge network](https://en.wikipedia.org/wiki/Bridging_(networking)) device is on link layer and aims to connect a group of hosts into a single local-area network (LAN). Based on my learning of computer networks, each IP node in the LAN maintains a [ARP](https://en.wikipedia.org/wiki/Address_Resolution_Protocol) table, which is the IP/MAC mappings. Within the LAN, network packets (or frames) are routed according to the host's MAC address. The `bridge` sounds like the switch device, which works at link layer and only needs to know MAC/interface mappings in order to direct the packets to right places.
 
-since `ip addr show` and `ifconfig`
+> Containers connected to the default bridge network can communicate with each other by IP address. Docker does not support automatic service discovery on the default bridge network. If you want containers to be able to resolve IP addresses by container name, you should use user-defined networks instead.
 
-To inspect the network ip used by the container, I can use
+Well, we cannot use `hostname` is probably due to the fact that no `dns` is bundled with this `bridge` network. We can only rely on the host's name resolution table,
 
 ```bash
-docker network inspect bridge
+root@6dbee430cbd5:/guihao/Playground/jarvi-io# cat /etc/hosts
+127.0.0.1       localhost
+::1     localhost ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+172.17.0.2      6dbee430cbd5
+```
+
+Good, it has `172.17.0.2`, the container is running. Let's verify my initial guess by using `arp` command,
+
+```bash
+# running as root
+root@6dbee430cbd5# apt-get update && apt-get install net-tools
+
+# 172.17.0.1 is the ip for the gateway device
+root@6dbee430cbd5# arp -a
+? (172.17.0.1) at 02:42:6b:93:ed:1b [ether] on eth0
+```
+
+Not very responsive to my guess since it doesn't have the running container's IP. Let's check the bridge network settings from docker,
+
+```bash
+$ docker network inspect bridge
+[
+    {
+        "Name": "bridge",
+        "Id": "19f6b73480fb56262850a5f53cba4f99c3a08a6c8c001f07cdae708f4cd5aab7",
+        ...
+        "Driver": "bridge",
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": null,
+            "Config": [
+                {
+                    "Subnet": "172.17.0.0/16",
+                    "Gateway": "172.17.0.1"
+                }
+            ]
+        },
+        ...
+        "Containers": {
+            "6dbee430cbd5ac28d6b23cd1099a519c52a70dd5fa20b4a7446d67737603768e": {
+                "Name": "blog",
+                "EndpointID": "186bf3fee3912f07a6d0b789e06cfbd8792c7d957339294bff91ff66796be5e9",
+                "MacAddress": "02:42:ac:11:00:02",
+                "IPv4Address": "172.17.0.2/16",
+                "IPv6Address": ""
+            }
+        },
+        ...
+    }
+]
+```
+
+Surprisingly, `172.17.0.1` is the IP for the `bridge` device. The `bridge` network serves like a gateway **router**, which works at layer 4, instead of the layer 3 **switch**. The output of `arp -a` in the container doesn't have other hosts' IP/MAC mappings but only the gateway's. I reckon the topology of this bridge network is star-shaped, where all hosts connect to the gateway router and this gateway router routes the traffic in and out. To conlude, there's no LAN.
+
+Great! If we can talk to this gateway, we might be able to ping the container with its IP!
+
+Continue from this [doc](https://docs.docker.com/docker-for-mac/networking/):
+
+> Q: There is no docker0 bridge on macOS</br>
+> A: Because of the way networking is implemented in Docker Desktop for Mac, you cannot see a docker0 interface on the host. This interface is actually within the virtual machine.
+
+`docker0` is the network bridge driver that is used by the container, which we've seen above, and it's not visable by the host.
+
+Searching from StackOverflow, [xhyve vm inside Docker for Mac hasn't no Network Adapter](https://stackoverflow.com/questions/41819391/can-not-ping-docker-in-macos) and the `bridge` device runs inside of VM on Mac. That's a bummer.
+
+The question is, if we cannot ping the ip, how docker can accept traffic? Well, similar to ssh tunneling, the docker listens on all network interfaces and forward the traffic to the VM, and the VM passes the traffic to the `bridge` network.
+
+We can check the mapping by,
+
+```bash
+docker ps
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS                            NAMES
+6dbee430cbd5        gblog:test          "/bin/bash"         3 hours ago         Up 3 hours          80/tcp, 0.0.0.0:7070->8000/tcp   blog
+```
+
+and also check the ports on the host being listened,
+
+```bash
+# port `7070` is used for forwarding in this post
+sudo lsof -iTCP -sTCP:LISTEN -P -n | grep 7070
+COMMAND     PID        USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+com.docke  1365 guihaoliang   22u  IPv6 0xed002061bd873c21      0t0  TCP *:7070 (LISTEN)
 ```
 
 https://www.tldp.org/HOWTO/IP-Masquerade-HOWTO/ipmasq-background2.5.html
 [masquerade](https://www.tldp.org/HOWTO/IP-Masquerade-HOWTO/ipmasq-background2.1.html)
 
-### binding the correct IP
+### binding the correct network interface
 
-[what is localhost and why should we use 127/8](http://www.tcpipguide.com/free/t_IPReservedPrivateandLoopbackAddresses.htm)
+I did everything I can but still I could not browse my website. What's wrong? Is the `localhost` the problem? I vaguely remember that sometimes `0.0.0.0` should be used instead of `127.0.0.1`.
+
+After reading this post, [what is localhost and why should we use 127/8](http://www.tcpipguide.com/free/t_IPReservedPrivateandLoopbackAddresses.htm)
 
 > The purpose of the loopback range is testing of the TCP/IP protocol implementation on a host. Since the lower layers are short-circuited, sending to a loopback address allows the higher layers (IP and above, check [OSI model](https://en.wikipedia.org/wiki/OSI_model)) to be effectively tested without the chance of problems at the lower layers manifesting themselves. 127.0.0.1 is the address most commonly used for testing purposes.
+
+I realize that network interface `lo` won't accept traffic outside of the host! Do I have other network interfaces on this docker container?
+
+```bash
+# apt-get install iproute2
+root@6dbee430cbd5:/guihao/Playground/jarvi-io# ip -4 a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+38: eth0@if39: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default  link-netnsid 0
+    inet 172.17.0.2/16 brd 172.17.255.255 scope global eth0
+       valid_lft forever preferred_lft forever
+```
+
+`0.0.0.0` can solve this because, in the context of server, it means accept traffic on all interfaces, which means it will also accept traffic from device `eth0`.
 
 [0]: https://guihao-liang.github.io/
 [1]: https://github.com/github/personal-website
