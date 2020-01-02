@@ -1,14 +1,15 @@
 ---
 layout: post
 title:  "Resume personal site with Jekyll on Docker"
+subtitle: "Network troubleshooting for docker-mac client"
 date:  2019-12-29 12:27:42
 permalink: /misc/
 categories: docker network jekyll
+bigimg: /img/path.jpg
+tag: [docker, jekyll]
 ---
 
-In order to save time, I like presenting conclusions at very beginning. ;-)
-
-## Conclusion
+## TL;DR
 
 I should've used this pre-configured [jekyll image](https://github.com/BretFisher/jekyll-serve) at the very beginning to avoid all the troubles I met. And this image is quite easy to use:
 
@@ -87,7 +88,10 @@ What this [hello world](https://github.com/karthequian/docker-helloworld/blob/a2
 Under the hood, it forwards the port from host to container. And we can [get the port mappings](https://stackoverflow.com/questions/32444612/how-to-get-the-mapped-port-on-host-from-a-docker-container),
 
 ```bash
-docker port container_id
+# blog is the container name
+$ docker port blog
+# docker -> host
+8000/tcp -> 0.0.0.0:7070
 ```
 
 ### ping container using its IP
@@ -107,7 +111,6 @@ NETWORK ID          NAME                DRIVER              SCOPE
 19f6b73480fb        bridge              bridge              local
 f5a055f5b740        host                host                local
 102cb83107c9        none                null                local
-
 ```
 
 The `none` network driver is the simplest, which disable all networking of the container. Let's talk about `host` and `bridge`.
