@@ -3,13 +3,12 @@ layout: post
 title:  "Resume personal site with Jekyll on Docker"
 subtitle: "Network troubleshooting for docker-mac client"
 date:  2019-12-29 12:27:42
-permalink: /misc/
 categories: docker network jekyll
 bigimg: /img/path.jpg
 tag: [docker, jekyll]
 ---
 
-## TL;DR
+TL;DR
 
 I should've used this pre-configured [jekyll image](https://github.com/BretFisher/jekyll-serve) at the very beginning to avoid all the troubles I met. And this image is quite easy to use:
 
@@ -21,7 +20,7 @@ cd dir/of/your/jekyll/site
 docker run -p 8080:4000 -v $(pwd):/site bretfisher/jekyll-serve
 ```
 
-Bare metal installation of jekyll on a fresh Linux container is also viable. Just make sure the jekyll server is listening on [0.0.0.0, instead of 127.0.0.1](3).
+Bare metal installation of jekyll on a fresh Linux container is also viable. Just make sure the jekyll server is listening on [0.0.0.0, instead of 127.0.0.1][3].
 
 If for security reasons you cannot use `0.0.0.0`, you can use [ssh tunneling to forward traffic to docker](https://stackoverflow.com/questions/52321269/how-to-reach-docker-container-localhost-from-mac).
 
@@ -29,11 +28,20 @@ If for security reasons you cannot use `0.0.0.0`, you can use [ssh tunneling to 
 
 ## motivation to resume my blog
 
-I used to build jekyll from scratch to build [guihao-liang.io](0). I found the [personal static website template](1) is fairly easy to use. I decided to give a try. First I follow the [instructions](1) to fork a site for myself. Later on, I realize that this site is based on Ruby, which I don't want to install on my local machine since I'm not a Ruby developer.
+I used to build jekyll from scratch to build [guihao-liang.io][0]. I found the [personal static website template][1] is fairly easy to use (but I end up using a better [fit](https://github.com/daattali/beautiful-jekyll#readme) for my need to post blogs). I decided to give it a try. First, I follow the [instructions][1] to fork a site for myself.
 
-Oh well, there's one simplest way to avoid this hurdle is to just push to my [github.io repo](2) and test the correctness of the remotely generated site by github. If the site is not right, modify locally and push it to the repository again. Repeat this process until I'm satisfied with it. That's too troublesome for development. It's like there's no local test env, and all the dev work is verified from production directly. If the user is upset, the further bug fix is on fire. That reminds me of some engineers that I've seen in my early career. Definitely, I don't want to be one of them.
+```bash
+gem install jekyll bundler
+cd personal-website
+bundle install
+bundle exec jekyll serve
+```
 
-Therefore, I realize I can have a docker container to run.
+Later, I realize that this site is based on Ruby, which I don't want to install on my local machine because I'm not a Ruby developer nor a full stack.
+
+Oh well, there's one simplest way to avoid this hurdle is to just push to my [github.io repo][2] and test the correctness of the remotely generated site by github. If the site is not right, modify locally and push it to the repository again. Repeat this process until I'm satisfied with it. That's too troublesome for development. It's like there's no local test env, and all the dev work is verified from production directly. If the user is upset, the further bug fix is on fire. That reminds me of some engineers that I've seen in my early career. Definitely, I don't want to be one of them.
+
+Therefore, I realize I can have a docker container to run because you can mess around with it and dispose it if it's too messy without polluting my host machine.
 
 ---
 
@@ -62,7 +70,7 @@ Neat, I don't have to start over. This time, I need to pass `-v` to tell docker 
 docker run -it --name blog -p 5000:80 -v /path/to/blog:/blog gblog:test /bin/zsh
 ```
 
-The command is mounting local blog repo on my Mac host to the container's `/blog`. What I have to do next is to `cd` to `/blog` in the container, and follow [instructions](2) to start Jekyll:
+The command is mounting local blog repo on my Mac host to the container's `/blog`. What I have to do next is to `cd` to `/blog` in the container, and follow [instructions][2] to start Jekyll:
 
 ```bash
 gem install jekyll bundler
@@ -81,7 +89,7 @@ I feel very excited to see my blog running locally! I provided `localhost:5000` 
 
 I already bind the ports from host to container, and why the container cannot be reached?
 
-Since I used the docker-for-Mac client, I checked [networking features](4) documentation. It shows that I'm using the right command `-p` to do the port-binding to the host, which creates a firewall rule which maps a container port to a port on the Docker host.
+Since I used the docker-for-Mac client, I checked [networking features][4] documentation. It shows that I'm using the right command `-p` to do the port-binding to the host, which creates a firewall rule which maps a container port to a port on the Docker host.
 
 What this [hello world](https://github.com/karthequian/docker-helloworld/blob/a28dd5245c9347905330d0b16c36ddee41af76e1/Dockerfile#L45) does is just use docker command `EXPOSE 80`, which should be the same thing as `-p`.
 
@@ -244,7 +252,7 @@ As a result, the packet first is sent to the gateway, the bridge network device,
 
 > 192.168.0.1 is a common Internet Protocol (IP) address for many wireless home routers, used to access administrative functions.
 
-With the further reading of [docker port binding](5), the `bridge` works more like a [NAT](https://en.wikipedia.org/wiki/Network_address_translation) server, which governs inbound and outbound traffic for hosts hidden bebind of it. That's why container-wise IP is not reachable from outside but the container can talk with outside world.
+With the further reading of [docker port binding][5], the `bridge` works more like a [NAT](https://en.wikipedia.org/wiki/Network_address_translation) server, which governs inbound and outbound traffic for hosts hidden bebind of it. That's why container-wise IP is not reachable from outside but the container can talk with outside world.
 
 > By default Docker containers can make connections to the outside world, but the outside world cannot connect to containers. Each outgoing connection will appear to originate from one of the host machine’s own IP addresses thanks to an **iptables masquerading** rule on the host machine that the Docker server creates when it starts
 
