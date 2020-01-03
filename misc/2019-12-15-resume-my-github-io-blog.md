@@ -1,16 +1,14 @@
 ---
 layout: post
 title:  "Resume personal site with Jekyll on Docker"
-subtitle: "Network troubleshooting for docker-mac client"
+subtitle: "Network troubleshooting for docker-for-mac client"
 date:  2019-12-29 12:27:42
-categories: docker network jekyll
+categories: [docker, network, jekyll]
 bigimg: /img/path.jpg
-tag: [docker, jekyll]
+tag: [docker, jekyll, network]
 ---
 
-TL;DR
-
-I should've used this pre-configured [jekyll image](https://github.com/BretFisher/jekyll-serve) at the very beginning to avoid all the troubles I met. And this image is quite easy to use:
+TL;DR, I should've used this pre-configured [jekyll image](https://github.com/BretFisher/jekyll-serve) at the very beginning to avoid all the troubles I met. And this image is quite easy to use:
 
 ```bash
 cd dir/of/your/jekyll/site
@@ -28,20 +26,20 @@ If for security reasons you cannot use `0.0.0.0`, you can use [ssh tunneling to 
 
 ## motivation to resume my blog
 
-I used to build jekyll from scratch to build [guihao-liang.io][0]. I found the [personal static website template][1] is fairly easy to use (but I end up using a better [fit](https://github.com/daattali/beautiful-jekyll#readme) for my need to post blogs). I decided to give it a try. First, I follow the [instructions][1] to fork a site for myself.
+I used to build jekyll from scratch to build [guihao-liang.io][0]. I found the [personal static website template][1] is fairly easy to use (but I end up using an [another template](https://github.com/daattali/beautiful-jekyll#readme) just to post blogs). I decided to give it a try. First, I follow the [instructions][1] to fork a site for myself.
 
 ```bash
 gem install jekyll bundler
-cd personal-website
+cd <your-personal-website>
 bundle install
 bundle exec jekyll serve
 ```
 
-Later, I realize that this site is based on Ruby, which I don't want to install on my local machine because I'm not a Ruby developer nor a full stack.
+Later on, I realize that this site is based on Ruby, which I don't want to install on my local machine because I'm not a Ruby developer nor a full stack.
 
-Oh well, there's one simplest way to avoid this hurdle is to just push to my [github.io repo][2] and test the correctness of the remotely generated site by github. If the site is not right, modify locally and push it to the repository again. Repeat this process until I'm satisfied with it. That's too troublesome for development. It's like there's no local test env, and all the dev work is verified from production directly. If the user is upset, the further bug fix is on fire. That reminds me of some engineers that I've seen in my early career. Definitely, I don't want to be one of them.
+There's one simplest way to avoid this hurdle is to just push local changes to my [github.io repo][2] and test site deployed by github manually. If the site is not expected, modify locally, push it to the repository again and wait until it's deployed (sometimes, 20 mins). Repeat this process until I'm satisfied with it. That's too troublesome for development. It's like there's no local test, and all the dev work is verified from production directly. If the user is upset, the further bug fix is on fire. That reminds me of some engineers that I've seen in my early career. Definitely, I don't want to be one of them.
 
-Therefore, I realize I can have a docker container to run because you can mess around with it and dispose it if it's too messy without polluting my host machine.
+Therefore, I realize I can have a docker container running to test locally because you can mess around with it and dispose it at your will without polluting the host machine.
 
 ---
 
@@ -56,7 +54,7 @@ docker run -it --name blog -p 5000:80 ubuntu:latest /bin/bash
 
 In the pseudo-tty, I manually `apt-get installed` a bunch of things I need, such as git, sudo, [zsh](http://www.boekhoff.info/how-to-install-zsh-and-oh-my-zsh/), [oh-my-zsh](https://ohmyz.sh/), and [Jekyll](https://jekyllrb.com/docs/installation/ubuntu/). Normally, you don't need those tools to be installed since the container is running without interactive shells. Here, I plan to use this environment as a long-term Linux box.
 
-After installation is complete, I realize I don't have access to my [blog repo](https://github.com/guihao-liang/guihao-liang.github.io) from container instance to the host machine. The reason I need to have access to my host machine's file system is that I mainly edit my blogs on my Mac, where I have a nice GUI. As far as I googled, there's no way to mount the host file system at runtime. The worst-case scenario is that I have to shut down the container and redo all the installations. At the time I planned to give up, I realize I can [commit](https://docs.docker.com/engine/reference/commandline/commit/) this container and save its state as an image!
+After installation is complete, I realize I don't have access to my [blog repo](https://github.com/guihao-liang/guihao-liang.github.io) from container instance to the host machine. The reason I need to have access to my host machine's file system is that I mainly edit my blogs on my Mac, where I have a nice [GUI](https://en.wikipedia.org/wiki/Graphical_user_interface). As far as I googled, there's no way to mount the host file system at runtime. The worst-case scenario is that I have to shut down the container and redo all the installations. At the time I planned to give up, I realize I can [commit](https://docs.docker.com/engine/reference/commandline/commit/) this container to save its state as an image for later use!
 
 ```bash
 # docker commit -a author -m "message"  <container_name> tag
@@ -70,7 +68,7 @@ Neat, I don't have to start over. This time, I need to pass `-v` to tell docker 
 docker run -it --name blog -p 5000:80 -v /path/to/blog:/blog gblog:test /bin/zsh
 ```
 
-The command is mounting local blog repo on my Mac host to the container's `/blog`. What I have to do next is to `cd` to `/blog` in the container, and follow [instructions][2] to start Jekyll:
+The command mounts local blog repo on my Mac host to the container's `/blog`. What I have to do next is to `cd` to `/blog` in the container, and follow [instructions][2] to start Jekyll:
 
 ```bash
 gem install jekyll bundler
@@ -83,13 +81,13 @@ Server running... press ctrl-c to stop.
 
 ```
 
-I feel very excited to see my blog running locally! I provided `localhost:5000` to my browser, hitting enter key with extreme excitement, and I got `This site can’t be reached`. OMG! That means my network binding is not right! How dare you!
+I feel very excited to see my blog running locally! I provided `localhost:5000` to my browser, hitting enter key with extreme excitement, and I got `This site can’t be reached`. OMG! That means my network binding isn't right! How dare you!
 
 ### container network binding
 
-I already bind the ports from host to container, and why the container cannot be reached?
+I already bind the ports from host to container, but why the container cannot be reached?
 
-Since I used the docker-for-Mac client, I checked [networking features][4] documentation. It shows that I'm using the right command `-p` to do the port-binding to the host, which creates a firewall rule which maps a container port to a port on the Docker host.
+Since I used the docker-for-mac client, I checked [networking features][4] documentation. It shows that I'm using the right command `-p` to do the port-binding to the host, which creates a [firewall rule](#maskquerade-rules) which maps a container port to a port on the Docker host.
 
 What this [hello world](https://github.com/karthequian/docker-helloworld/blob/a28dd5245c9347905330d0b16c36ddee41af76e1/Dockerfile#L45) does is just use docker command `EXPOSE 80`, which should be the same thing as `-p`.
 
@@ -106,10 +104,10 @@ $ docker port blog
 
 Okay, it's mysterious, probably I should find the IP address to ping that `ip:port` directly. Hold, on, the doc also says:
 
-> Q: I cannot ping my containers</br>
-> A: Docker Desktop for Mac can’t route traffic to containers.</br>
-> Q: Per-container IP addressing is not possible</br>
-> A: The docker (Linux) bridge network is not reachable from the macOS host.</br>
+> Q: I cannot ping my containers<br>
+> A: Docker Desktop for Mac can’t route traffic to containers.<br>
+> Q: Per-container IP addressing is not possible<br>
+> A: The docker (Linux) bridge network is not reachable from the macOS host.
 
 ### network drivers
 
@@ -146,6 +144,7 @@ The initial guess of mine is that the [bridge network](https://en.wikipedia.org/
 Well, we cannot use `hostname` is probably due to the fact that no `dns` is bundled with this `bridge` network. We can only rely on the host's name resolution table,
 
 ```bash
+# running as root by default in container
 root@6dbee430cbd5:/guihao/Playground/jarvi-io# cat /etc/hosts
 127.0.0.1       localhost
 ::1     localhost ip6-localhost ip6-loopback
@@ -159,7 +158,6 @@ ff02::2 ip6-allrouters
 Good, it has `172.17.0.2`, the container is running. Let's verify my initial guess by using `arp` command,
 
 ```bash
-# running as root
 root@6dbee430cbd5# apt-get update && apt-get install net-tools
 
 # 172.17.0.1 is the ip for the gateway device
@@ -209,14 +207,14 @@ Great! If we can talk to this gateway, we might be able to ping the container wi
 
 Continue from this [doc](https://docs.docker.com/docker-for-mac/networking/):
 
-> Q: There is no docker0 bridge on macOS</br>
+> Q: There is no docker0 bridge on macOS<br>
 > A: Because of the way networking is implemented in Docker Desktop for Mac, you cannot see a docker0 interface on the host. This interface is actually within the virtual machine.
 
 `docker0` is the network bridge driver that is used by the container, which we've seen above, and it's not visible by the host.
 
-[xhyve vm inside Docker for Mac has no network adapter](https://stackoverflow.com/questions/41819391/can-not-ping-docker-in-macos) and the `bridge` device runs inside of VM on Mac. That's a bummer.
+[xhyve vm inside docker-for-mac has no network adapter](https://stackoverflow.com/questions/41819391/can-not-ping-docker-in-macos) and the `bridge` device runs inside of VM on Mac. That's a bummer.
 
-The question is, if we cannot ping the IP, how could docker accept traffic? Well, similar to ssh tunneling, the docker client listens on all network interfaces and forwards the traffic to the VM locally, and the VM passes the traffic to the `bridge` network.
+The question is that, if we cannot ping the IP, how could docker accept traffic? Well, similar to ssh tunneling, the docker client listens on all network interfaces and forwards the traffic to the VM locally, and the VM passes the traffic to the `bridge` network.
 
 We can check the mapping by,
 
@@ -293,10 +291,11 @@ From [low level implementation perspective](https://github.com/moby/moby/issues/
 
 Linux maskquerade is like NAT. A brief [intor to masquerade](https://www.tldp.org/HOWTO/IP-Masquerade-HOWTO/ipmasq-background2.1.html)
 
-> IP Masquerade is a networking function in Linux similar to the one-to-many (1:Many) NAT (Network Address Translation) servers found in many commercial firewalls and network routers. For example, if a Linux host is connected to the Internet via PPP, Ethernet, etc., the IP Masquerade feature allows other "internal" computers connected to this Linux box (via PPP, Ethernet, etc.) to also reach the Internet as well. Linux IP Masquerading allows for this functionality even though these internal machines don't have an officially assigned IP address.</br></br>
+> IP Masquerade is a networking function in Linux similar to the one-to-many (1:Many) NAT (Network Address Translation) servers found in many commercial firewalls and network routers. For example, if a Linux host is connected to the Internet via PPP, Ethernet, etc., the IP Masquerade feature allows other "internal" computers connected to this Linux box (via PPP, Ethernet, etc.) to also reach the Internet as well. Linux IP Masquerading allows for this functionality even though these internal machines don't have an officially assigned IP address.<br>
+>
 > MASQ allows a set of machines to invisibly access the Internet via the MASQ gateway. To other machines on the Internet, the outgoing traffic will appear to be from the IP MASQ Linux server itself. In addition to the added functionality, IP Masquerade provides the foundation to create a HEAVILY secured networking environment. With a well-built firewall, breaking the security of a well-configured masquerading system and internal LAN should be considerably difficult to accomplish.
 
-Also check this [great illustration](https://www.tldp.org/HOWTO/IP-Masquerade-HOWTO/ipmasq-background2.5.html)!
+For further information, check this [great illustration](https://www.tldp.org/HOWTO/IP-Masquerade-HOWTO/ipmasq-background2.5.html)!
 
 ### binding the correct network interface
 
