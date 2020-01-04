@@ -131,11 +131,15 @@ That should work but it didn't. When I continued to read the doc, it says **host
 
 ### bridge network
 
-<img src="https://docs.docker.com/docker-for-mac/images/docker-for-mac-install.png" width="80%">
+<img src="../img/note-img/misc/docker/docker-for-mac-install.png" width="80%">
+
+[image source](https://docs.docker.com/docker-for-mac/images/docker-for-mac-install.png)
 
 Bridge network is [used by default by docker](https://docs.docker.com/network/), but what is  `bridge network`? And [how container connects to host through networking](https://www.docker.com/blog/understanding-docker-networking-drivers-use-cases/)?
 
-<img src="http://img.scoop.it/bmExZyvGWidultcwx9hCb7nTzqrqzN7Y9aBZTaXoQ8Q=" width="80%">
+<img src="../img/note-img/misc/docker/docker-network-bridge.png" width="80%">
+
+[image source](http://img.scoop.it/bmExZyvGWidultcwx9hCb7nTzqrqzN7Y9aBZTaXoQ8Q=)
 
 The initial guess of mine is that the [bridge network](https://en.wikipedia.org/wiki/Bridging_(networking)) device is on the link layer and aims to connect a group of hosts into a single local-area network (LAN). Based on my learning of computer networks, each IP node in the LAN maintains a [ARP](https://en.wikipedia.org/wiki/Address_Resolution_Protocol) table, which is the IP/MAC mappings. Within the LAN, network packets (or frames) are routed according to the host's MAC address. The `bridge` sounds like the switch device, which works at the link layer and only needs to know MAC/interface mappings to direct the packets to the right places.
 
@@ -281,7 +285,9 @@ It can add rules to filter or alter packets of inbound and outbound packets at d
 
 Tables contain rules to be executed in different chains (various points where packets are processed). Targets are corresponding reaction to process the matched packets.
 
-<img src="https://www.booleanworld.com/wp-content/uploads/2017/06/Untitled-Diagram.png" width="80%">
+<img src="../img/note-img/misc/docker/iptables-diagram.png" width="80%">
+
+[image source](https://www.booleanworld.com/wp-content/uploads/2017/06/Untitled-Diagram.png)
 
 From [low level implementation perspective](https://github.com/moby/moby/issues/33605#issuecomment-307361421),
 
