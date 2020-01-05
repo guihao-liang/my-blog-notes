@@ -1,10 +1,13 @@
 ---
-title: "Learn CMake in a painful way"
+title: "CMake in-tree and out-of-tree build in practice"
+subtitle: "Integrate OpenMP to TuriCreate"
 author: Guihao Liang
+date: 2019-12-18
 published: true
+tags: ["cmake", "cpp", "openmp"]
 ---
 
-Recently, I worked on integrating [OpenMP](0) to [Turicreate](https://github.com/apple/turicreate) codebase. Me and my collegue [Hoyt](https://github.com/hoytak) worked on several different ways to try to get the work done.
+Recently, I worked on integrating [OpenMP][0] to [Turicreate](https://github.com/apple/turicreate) codebase. My colleague [Hoyt](https://github.com/hoytak) and I worked on several different ways to try to get the work done.
 
 Let me elaborate through our approaches and explain why we do and what I've learned in a hard way.
 
@@ -23,15 +26,15 @@ turicreate
 
 `deps` contains the source of libraries that we build out-of-source-tree, and we call those libraries external dependencies.
 
-The overall build process is that we first build the external dependencies, and install them into a deterministic location out side of build tree, located at `turicreate/deps/local/{lib,lib64,include}`, where `turicreate` refers to the root of the project and I will use this convention from now on when I mention it in a path.
+The overall build process is that we first build the external dependencies, and install them into a deterministic location outside of build tree, located at `turicreate/deps/local/{lib,lib64,include}`, where `turicreate` refers to the root of the project and I will use this convention from now on when I mention it in a path.
 
-After all external depencies are built, those external libraries are known at compile and link time when we compile the source tree and put all buildouts into build tree.
+After all external dependencies are built, those external libraries are known at compile and link time when we compile the source tree and put all buildouts into the build tree.
 
 ## CMake fundamentals
 
-Initially, I thought the job should be fairly easy. Adding a `add_subdirectory()` to OpenMP should be sufficient and I don't have to pick up my long-time-ago CMake knowledge.
+Initially, I thought the job should be fairly easy. Adding an `add_subdirectory()` to OpenMP should be sufficient and I don't have to pick up my long-time-ago CMake knowledge.
 
-The reason not to invest much time on CMake is that wrting build scripts in most cases is one time thing. Once you get it working, you probably won't have a second chance to look at it again as long as it works (not even working well). Maybe after a long time, team decides to upgrade the package, you may come back and do the job again. When you look at the build script again, it looks a like a long distant relative visiting you during Chrismas. Well, It turns out that's the worst decision I have made through this project.
+The reason not to invest much time on CMake is that writing build scripts in most cases is a one-time thing. Once you get it working, you probably won't have a second chance to look at it again as long as it works (not even working well). Maybe after a long time, the team decides to upgrade the package, you may come back and do the job again. When you look at the build script again, it looks like a long distant relative visiting you during Chrismas. Well, It turns out that's the worst decision I have made through this project.
 
 The concept I should've mastered before I read through OpenMP CmakeLists.txt are if-else, macros and variable scopes. I have another post called [CMake 101](19-12-19-cnake-101.md) to cover these topics.
 
@@ -39,7 +42,7 @@ The concept I should've mastered before I read through OpenMP CmakeLists.txt are
 
 ## External Project, out-of-tree build
 
-When I follow OpenMP installation instructions to build the library, it turns out the header `omp.h` is both architecture and build mode (debug or release) dependent. That means we don't have the `omp.h` available at compile time and only after OpenMP is built, we can know where the `omp.h` is located in the build tree.
+When I follow OpenMP installation instructions to build the library, it turns out the header `omp.h` is both architecture and build mode (debug or release) dependent. That means we don't have the `omp.h` available at compile-time and only after OpenMP is built, we can know where the `omp.h` is located in the build tree.
 
 The main concern is that if our source file relies on `omp.h`, the include path at least for now is unclear. What's more, [XGBoost](https://github.com/dmlc/xgboost) uses `#include <omp.h>`.
 
@@ -49,7 +52,7 @@ The main concern is that if our source file relies on `omp.h`, the include path 
 #else
 ```
 
-If we want to enable XGBoost to use OpenMP, we need to at least add the include path to `omp.h` into cmake's `include_directories` clause into our XGBoost build script.
+If we want to enable `XGBoost` to use OpenMP, we need to at least add the include path to `omp.h` into CMake's `include_directories` clause into our XGBoost build script.
 
 Since installing the OpenMP to our build tree is more straightforward, we decide to build OpenMP out of the source tree and install the generated header and library to a source-tree build time known location, which is `turicreate/<build_tree>deps/local/lib` and `turicreate/<build_tree>/deps/local/include`.
 
@@ -89,16 +92,20 @@ I set the architecture flag to `arm64` and build within the source of OpenMP. Su
 [100%] Linking C static library libomp.a
 ```
 
-But it turns out that it ignores the `LIBOMP_ARCH` flag. We can use libtool
+But it turns out that it ignores the `LIBOMP_ARCH` flag. We can use `lipo` to chekc the static lib's architecture,
 
+```bash
+$ build git:(19-12-omp) lipo -info runtime/src/libomp.a
+Non-fat file: runtime/src/libomp.a is architecture: x86_64
 ```
-```
+
+The reason for this is because
 
 ---
 
 ## In-source build with xcodebuild
 
-We suspect that xcode build flags are not passed into clang correctly, thus we want to try the in-tree build strategy. The in-tree build is to put the source file under `<turicreate_root>/src/external/` so that during the build, the OpenMP source file will be treat as part of TuriCreate source and `xcodebuild` will pick up these source to compile.
+We suspect that Xcode build flags are not passed into clang correctly, thus we want to try the in-tree build strategy. The in-tree build is to put the source file under `<turicreate_root>/src/external/` so that during the build, the OpenMP source file will be treat as part of TuriCreate source and `xcodebuild` will pick up these source to compile.
 
 ```bash
 external/openmp
@@ -136,7 +143,7 @@ add_subdirectory(${_openmp_dir})
 
 To include `openmp` in our build, we just add one-liner `add_subdirectory(openmp)` into `src/external/CMakeLists.txt`, which is a standarded way of using CMake.
 
-Then we can start the in-tree build. My other post [build omp for ios](19-12-17-build-omp-for-ios.md) covers this topic. Feel free to have a look at.
+Then we can start the in-tree build. My other post [build omp for ios](19-12-17-build-omp-for-ios.md) covers this topic. Feel free to have a look.
 
 ---
 
@@ -146,7 +153,7 @@ turn off assembler to avoid compiling the `z_linux.S` by using compiler flags [-
 
 I want to get the exported path to find the header:
 
-retrieve variable from child scope (EXPORT_CMN_DIR)
+retrieve a variable from child scope (EXPORT_CMN_DIR)
 [get_directory_property](https://stackoverflow.com/questions/34804107/retrieve-variable-from-child-scope#34815419)
 
 ---

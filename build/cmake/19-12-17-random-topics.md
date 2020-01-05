@@ -1,6 +1,6 @@
 ---
 author: Guihao Liang
-published: true
+published: false
 ---
 
 architecture-wise
@@ -19,7 +19,6 @@ https://stackoverflow.com/questions/21422447/what-iphone-devices-will-run-on-arm
 [copy during the build](http://qrikko.blogspot.com/2016/05/cmake-and-how-to-copy-resources-during.html)
 
 [adding symbolic links](https://stackoverflow.com/questions/35765106/symbolic-links-cmake)
-
 
 ## git add git
 
