@@ -8,7 +8,7 @@ tags: ['python']
 categories: ['python']
 ---
 
-Recently, I'm assigned to redesign the packaging pipeline for turicreate python wheel, which under the hood is zip file formatted file.
+Recently, I'm assigned to redesign the packaging pipeline for turicreate [python wheel](https://pythonwheels.com/), which is a ZIP-formatted archive.
 
 After finishing packaging the wheel package, I want to install it into the site-package of my virtual environment. But it refuses to install it there by saying,
 
