@@ -48,7 +48,7 @@ Therefore, I realize I can have a docker container running to test locally becau
 At the very beginning, I just pull a [Ubuntu docker image](https://hub.docker.com/_/ubuntu/) and run it as a container with an interactive shell. At the same time, I realize I have to forward network ([binding ports](https://runnable.com/docker/binding-docker-ports)) from my Mac host to the container.
 
 ```bash
-# -p host_port:container_port (mnemoic: forward from host to container)
+# -p host_port:container_port (mnemonic: forward from host to container)
 docker run -it --name blog -p 5000:80 ubuntu:latest /bin/bash
 ```
 
