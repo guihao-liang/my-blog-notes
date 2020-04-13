@@ -236,7 +236,7 @@ AWSError<CoreErrors> AWSErrorMarshaller::Marshall(const Aws::String& exceptionNa
 }
 ```
 
-Let's [summarize](#Summary).
+Let's [summarize](#summary).
 
 [0]: https://github.com/aws/aws-sdk-cpp/blob/2a1d72685720b9663df2bfe38d3e69c4cc87c417/aws-cpp-sdk-core/source/client/CoreErrors.cpp#L121
 [1]: https://github.com/aws/aws-sdk-cpp/blob/2a1d72685720b9663df2bfe38d3e69c4cc87c417/aws-cpp-sdk-core/include/aws/core/http/HttpResponse.h#L118
