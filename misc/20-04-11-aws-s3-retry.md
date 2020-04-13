@@ -148,9 +148,9 @@ AWSError<CoreErrors> AWSXMLClient::BuildAWSError(const std::shared_ptr<Http::Htt
     }
 ```
 
-There are 3 situations to handle.
+There are 3 situations to handle:
 
-1. client-side network failures.
+* First, client-side network failures.
 
 In AWS implementation, there are 2 types of client-side errors, `USER_CANCELLED` and `NETWORK_CONNECTION`, which is reported by underlying CURL client. `USER_CANCELLED` is unable to retry.
 
@@ -161,11 +161,11 @@ In AWS implementation, there are 2 types of client-side errors, `USER_CANCELLED`
             response->SetClientErrorType(CoreErrors::NETWORK_CONNECTION);
 ```
 
-2. decide from HTTP response code if HTTP response body is empty.
+* Second, decide from HTTP response code if HTTP response body is empty.
 
 Check [IsRetryableHttpResponseCode][1] implementation for details.
 
-3. Decide from exception names returned from server-side.
+* Last, Decide from exception names returned from server-side.
 
 From the code above, `GetErrorMarshaller` returns an `AWSErrorMarshaller`, which reads the HTTP response body and parse the XML payload to get exception name and message. Then, it uses base class `AWSErrorMarshaller` to parse the server-side response code and error message. Well, why exception name and message instead of error code? I guess the AWS server-side Java code uses exception style, whereas this Cpp client uses no-exception (error handling) style.
 
