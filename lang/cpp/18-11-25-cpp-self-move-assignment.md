@@ -1,8 +1,9 @@
 ---
 layout: post
 title:  "CPP Self Move Assignment"
+subtitle: "Understand move assignment in depth"
+categories: ["cpp"]
 date:   2018-11-25 15:22:02 -0800
-categories: lang cpp
 ---
 
 ## brief intro

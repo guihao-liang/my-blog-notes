@@ -21,9 +21,9 @@ AWS SDK will do retry for you under 3 conditions
 
 The [default retry strategy](https://github.com/aws/aws-sdk-cpp/blob/master/aws-cpp-sdk-core/source/client/DefaultRetryStrategy.cpp) use 3 for max retry time. But you can customize your own max retry time and [retry strategy](https://github.com/aws/aws-sdk-cpp/blob/master/aws-cpp-sdk-core/source/client/SpecifiedRetryableErrorsRetryStrategy.cpp) based on specific error messages.
 
-All in all, you can customize retry strategy by providing a list of [error names][2], or check `ShouldRetry` and decide from information provided by error instances.
+All in all, you can customize retry strategy by providing a list of [error names][2], or check `ShouldRetry` and `GetErrorType` and then make decision from information provided by error instances.
 
-```CPP
+```cpp
 do {
     auto outcome = client.ListObjectsV2(request);
     if (outcome.IsSuccess()) {
@@ -37,14 +37,22 @@ do {
         }
         else
         {
-            // custom retry
-            // check http response code?
-            // check error name or error message?
-            n_retry++;
-            ...
+            // if it's unknown error (non-standard AWS error), we may need
+            // to check the exception name or exception message.
+            if (error.GetErrorType() == Aws::S3::S3Errors::UNKNOWN) {
+                // custom retry
+                // check http response code?
+                // check error name or error message?
+                n_retry++;
+                ...
+            } else {
+                // respect AWS's decision on retry
+            }
         }
 while (n_retry < 3);
 ```
+
+In most cases, you don't need to explicitly retry. But in rare cases, such as private S3 proxy returns non-standard AWS errors (explained below), you need to explicitly retry on your own judgement.
 
 ---
 
@@ -52,13 +60,13 @@ while (n_retry < 3);
 
 So, you may ask how Aws CPP SDK handles retry on s3 request errors? I read the [documentation](https://docs.aws.amazon.com/general/latest/gr/api-retries.html), it says AWS will perform retry for me. However, based on my observation, it doesn't retry on S3 errors.
 
-Let's go through the example with HTTP code `429`. The internal S3 service has rate limitations on `ListObjectsV2`, and once there are too many requests on the same key within a short period, it will deny the request by returning code 429.
+Let's go through the example with HTTP code `429`. The internal S3 service at my work has rate limitations on `ListObjectsV2`, and once there are too many requests on the same key within a short period, it will deny the request by returning code 429.
 
 Thus, I decided to provide a custom retry logic. I happened to see there's a `ShouldRetry` method on s3 error instance, and why not have a shot? AWS might already have some internal retry logic prepared for us, just like [CoreErrors][0].
 
 The code is like,
 
-```CPP
+```cpp
 do {
     auto outcome = client.ListObjectsV2(request);
     if (outcome.IsSuccess()) {
@@ -74,7 +82,7 @@ do {
 while (n_retry < 3);
 ```
 
-But `error.ShouldRetry` **always** returns false, which means you should customize retry strategy for S3 requests.
+But `error.ShouldRetry` **always** returns false from S3 client, which means I probably need to customize retry strategy for S3 requests.
 
 To check what it is, go through stack trace from lldb,
 
@@ -124,7 +132,7 @@ HttpResponseOutcome AWSClient::AttemptExhaustively(const Aws::Http::URI& uri,
 
 `S3Client` -> `AWSXMLClient` -> `AWSClient`. This is classical polymorphism and child classes can reuse above retry skeleton. If you check the stack trace above and ignore all parent classes, you will find at frame `#1`, the S3 specific implementation kicks in. Before we dig into S3 error handler, let's first look at `BuildAWSError`.
 
-```Cpp
+```cpp
 AWSError<CoreErrors> AWSXMLClient::BuildAWSError(const std::shared_ptr<Http::HttpResponse>& httpResponse) const
 {
     AWSError<CoreErrors> error;
@@ -165,9 +173,9 @@ In AWS implementation, there are 2 types of client-side errors, `USER_CANCELLED`
 
 Check [IsRetryableHttpResponseCode][1] implementation for details.
 
-* Last, Decide from exception names returned from server-side.
+* Last, decide from exception names returned from server-side.
 
-From the code above, `GetErrorMarshaller` returns an `AWSErrorMarshaller`, which reads the HTTP response body and parse the XML payload to get exception name and message. Then, it uses base class `AWSErrorMarshaller` to parse the server-side response code and error message. Well, why exception name and message instead of error code? I guess the AWS server-side Java code uses exception style, whereas this Cpp client uses no-exception (error handling) style.
+From the code above, `GetErrorMarshaller` returns an `AWSErrorMarshaller`, which reads the HTTP response body and parse the XML payload to get exception name and message. Well, why exception name and message instead of error code? I guess the AWS server-side Java code uses exception style, whereas this Cpp client uses no-exception (error handling) style.
 
 ```cpp
 AWSError<CoreErrors> AWSErrorMarshaller::Marshall(const Aws::String& exceptionName, const Aws::String& message) const
@@ -225,9 +233,9 @@ AWSError<CoreErrors> GetErrorForName(const char* errorName)
   return AWSError<CoreErrors>(CoreErrors::UNKNOWN, false)
 ```
 
-The above code tries to generate errors (AwsError) from requests based on error name (or exception name). The error name is "429" (corresponding to HTTP code, too many requests), which indeed is not a valid error name by AWS standards. That's why it recognizes it as `CoreErrors::UNKNOWN`. Since S3 error marshaller cannot recognize the error name, it will use base [AWSErrorMarshaller::FindErrorByName(errorName)](https://github.com/aws/aws-sdk-cpp/blob/2a1d72685720b9663df2bfe38d3e69c4cc87c417/aws-cpp-sdk-core/source/client/CoreErrors.cpp#L37) to find its corresponding error type, which is also `UNKNOWN` since "429" is not a valid error name.
+The above code tries to generate errors (AwsError) from requests based on error name (or exception name). The __exception name__ is `429` (corresponding to HTTP code, too many requests), which indeed is not a valid error name by AWS standards. The valid name should be `SlowDownException` or `SlowDown`. That's why it recognizes it as `CoreErrors::UNKNOWN`. Since S3 error marshaller cannot recognize the error name, it will use base [AWSErrorMarshaller::FindErrorByName(errorName)](https://github.com/aws/aws-sdk-cpp/blob/2a1d72685720b9663df2bfe38d3e69c4cc87c417/aws-cpp-sdk-core/source/client/CoreErrors.cpp#L37) to find its corresponding error type, which results in `UNKNOWN` again.
 
-The final error will be returned as below, wrapped with exception name ("429") and exception message ("Application request rate limit exceeded").
+The final error will be returned as below, wrapped with exception name (`429`) and exception message (`Application request rate limit exceeded`).
 
 ```cpp
 AWSError<CoreErrors> AWSErrorMarshaller::Marshall(const Aws::String& exceptionName, const Aws::String& message) const {
