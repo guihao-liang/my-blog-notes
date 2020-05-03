@@ -3,13 +3,16 @@ title: "How to detect compiler architecture when compiling?"
 date: 2019-12-17 09:52:25
 author: Guihao Liang
 published: true
+bigimg: /img/rain_drop.jpg
 tags: ['cmake', 'cpp', 'openmp']
 categories: ['cmake', 'cpp']
 ---
 
+## Conditional compilation for Hardware/OS architectures
+
 Recently, I work on introducing OpenMP to our [TuriCreate](https://github.com/apple/turicreate) codebase for performance experiments.
 
-When I read the [OpenMP][1] source code, I feel really confused about how it can detect the architecture of the host machine. It turns out that some special compiler flags are set within the compiler to tell the source code what's the architecture to build for. When it compiles source code, the source code can check these flags to determine which part should be compiled for a certain architecture.
+When I read the [OpenMP][1] source code, I feel really confused about how it can detect the architecture of the host machine. It turns out that special compiler flags need to be set in order to tell the source code what's the architecture to build for by using preprocessor flags (conditional compilation, in short). When compiler compiles source, the source can check these preprocessor flags to determine which part should be compiled for a certain architecture.
 
 For example, in the preprocessor section of `runtime/src/kmp_platform.h` from [OpenMP][1]:
 
@@ -35,17 +38,23 @@ For example, in the preprocessor section of `runtime/src/kmp_platform.h` from [O
 ...
 ```
 
-It first detects OS type, which is a UNIX type, and then it checks compiler architecture flags, such as `__i386` or `__aarch64__` to set up its conditional compilation flags for later conditional compilation purposes.
+It first detects OS type, which is a UNIX type, and then it checks compiler architecture preprocessor flags, such as `__i386` or `__aarch64__`, to set up its __conditional compilation flags__ in this header file, in preparation for later conditional compilation on source files.
 
-But why do all of those conditional flags start with `KMP`, instead of `OMP`? Besides that, this implementation is contributed by Intel, and why those flags don't start with an I?
+## Digression to KMP
 
-I googled for a long time and got no good answer. Therefore, I asked a [question in StackOverflow](https://stackoverflow.com/questions/59333281/what-does-k-in-kmp-affinity-mean). It turns out that it doesn't stand for [Kernel](https://superuser.com/questions/1087714/why-do-process-names-start-with-the-letter-k-in-linux), which is very common in the Linux world. But K stands for [Kuck](https://en.wikipedia.org/wiki/David_Kuck),
+Why do all of those conditional flags start with `KMP`, instead of `OMP`? Besides that, this implementation is contributed by Intel, and why those flags don't start with an I?
+
+feel free to skip ;-)
+
+I googled for a long time and got no good answer. Therefore, I asked a [question in StackOverflow](https://stackoverflow.com/questions/59333281/what-does-k-in-kmp-affinity-mean). It turns out that it doesn't stand for [Kernel](https://superuser.com/questions/1087714/why-do-process-names-start-with-the-letter-k-in-linux), which is very common in the Linux world. But __K__ stands for [Kuck](https://en.wikipedia.org/wiki/David_Kuck),
 
 > who founded Kuck and Associates (KAI) in 1979 to build a line of industry-standard optimizing compilers especially focused upon exploiting parallelism. Later,
 
-KAI is acquired by Intel that's why even though this is Intel's implementation but it's doesn't start with an I for Intel.
+KAI is acquired by Intel that's why even though this is Intel's implementation but it doesn't start with an __I__ for Intel.
 
-Let's get back to our topic. this preprocessor detection trick can be also used by CMake build scripts. This [cmake snippet][0] that is used by [OpenMP][0] to detect compiler architecture:
+## Back to the point
+
+This preprocessor detection trick can be also used by CMake build scripts. This [cmake snippet][0] that is used by [OpenMP][0] to detect compiler architecture:
 
 ```cmake
 function(libomp_get_architecture return_arch)
@@ -81,23 +90,22 @@ function(libomp_get_architecture return_arch)
 endfunction()
 ```
 
-It first defines preprocessors to detect the compiler architecture flags, as we've seen similar patterns (or tricks) at the previous section. It uses `#error` to print out results to the compile output (stderr) when the code is compiled.
+It first defines preprocessor flags to detect the compiler architecture. It uses `#error` to print out results to the compile output (stderr) during compiling the code.
 
-Then it uses [try_run](https://cmake.org/cmake/help/v3.2/command/try_run.html) to run the code with only preprocessors. When compiling, all previous defined `CMAKE_C_FLAGS` and `CMAKE_CXX_FLAGS` will be used. One can specify compiler architecture through these flags. We will cover that soon. After the code is compiled, it will do regex match over the build output to capture the keywords which `#error` shouts out. See, it's not that hard.
+Then it uses [try_run](https://cmake.org/cmake/help/v3.2/command/try_run.html) to compile with the preprocessor code. When compiling, all previous defined `CMAKE_C_FLAGS` and `CMAKE_CXX_FLAGS` will be used. One can specify compiler architecture through these flags. We will cover that soon. After the code is compiled, it will do regex match over the build output to capture the keywords which `#error` shouts out. See, it's not that hard.
 
-How do we compile the source code for an architecture that's different from our host machine? Let's check clang man page.
+How do we compile the source code for an architecture that's different from our host machine for __cross compilation__? Let's check `clang` man page.
 
 ```bash
-   -arch <architecture>
-              Specify the architecture to build for.
-
+-arch <architecture>
+          Specify the architecture to build for.
 ```
 
 `-arch` is the right option for us!
 
-To repro the [cmake code][0] mentioned above, I copy the string defined for CMake variable `detect_arch_src_txt` to a separate C source file, which is also called `libomp_detect_arch.c`. Let's try to compile it with different architectures!
+In order to demo the [cmake code][2] mentioned above, I copy the preprocess code defined for CMake variable `detect_arch_src_txt` to a separate C source file, called `libomp_detect_arch.c`.
 
-for [arm, armv7 and arm64](https://stackoverflow.com/questions/21422447/what-iphone-devices-will-run-on-armv7s-and-arm64):
+Let's try to compile it with different architectures, such as [arm, armv7 and arm64](https://stackoverflow.com/questions/21422447/what-iphone-devices-will-run-on-armv7s-and-arm64).
 
 ```bash
 ➜  omp git:(master) ✗ clang -arch arm libomp_detect_arch.c
@@ -117,16 +125,8 @@ libomp_detect_arch.c:22:2: error: ARCHITECTURE=aarch64
 1 error generated.
 ```
 
-I also tried other commonly used flag for macOS, `CMAKE_OSX_ARCHITECTURES`:
-
-```bash
-➜  omp git:(master) ✗ clang -DCMAKE_OSX_ARCHITECTURES=arm libomp_detect_arch.c
-libomp_detect_arch.c:4:2: error: ARCHITECTURE=x86_64
-#error ARCHITECTURE=x86_64
- ^
-```
-
-it turns out that it does no effect for specifying architecture for compilation.
+Hope this post is helpful ;-)
 
 [0]: https://github.com/llvm/llvm-project/blob/0b969fa9ccf595abc31942e5d14be784707e960c/openmp/runtime/cmake/LibompGetArchitecture.cmake#L16
 [1]: https://github.com/apple/turicreate
+[2]: https://github.com/llvm/llvm-project/blob/0b969fa9ccf595abc31942e5d14be784707e960c/openmp/runtime/cmake/LibompGetArchitecture.cmake#L18-L52
