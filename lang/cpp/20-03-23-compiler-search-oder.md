@@ -1,10 +1,11 @@
 ---
 title: Compiler header search order
+subtitle: Compile Cython with setuptools
 date: 2020-03-26 20:10:49
 author: Guihao Liang
 published: true
 bigimg: /img/rain_drop.jpg
-tags: ['python', 'cpp', 'clang']
+tags: ['python', 'cpp', 'clang', 'cython']
 categories: ['python', 'cpp']
 ---
 

@@ -35,19 +35,19 @@ build_some_thing:
 
 From [gitlab-ci.yml reference](https://docs.gitlab.com/ee/ci/yaml/#services), `services` is a list of docker services that are linked with a base image of specified `image`. What does this mean?
 
-Base image is from `image` keyword, which runs the CI jobs. `services` are other running docker containers that can be reached (linked) by the network. For example, the dind (docker-in-docker) services can be reached by what's set in `DOCKER_HOST`, which is `tcp://docker:2375`, whose `docker` part is the [service name][dind-access-name] for dind and it will be substituted with the dind container's __IP__ address. The port 2375 is chosen to reveive HTTP requests without TLS encryption. If HTTPS is needed, use port [2376][docker-port].
+Base image is from `image` keyword, which runs the CI jobs. `services` are other running docker containers that can be reached (linked) by the network. For example, the `dind` (docker-in-docker) services can be reached by what's set in `DOCKER_HOST`, which is `tcp://docker:2375`, whose `docker` part is the [service name][dind-access-name] for the `dind` service listed under `services` attribute, and it will be substituted with the `dind` service container's __IP__ address. The port 2375 is chosen to receive HTTP requests __without TLS encryption__. If HTTPS is needed, use port [2376][docker-port].
 
 From [gitlab dind reference][dind-reference], one benefit is that each CI job has its completely independent docker engine,
 
 > When using docker-in-docker, each job is in a clean environment without the past history. Concurrent jobs work fine because every build gets its instance of Docker engine so they won’t conflict with each other. But this also means that jobs can be slower because there’s no caching of layers.
 
-In the base image container, when running `docker` command, it will use [`DOCKER_HOST`][docker-daemon] and send requests to the container service to execute the docker commands.
+In the base image container, when running `docker` command, it will use [`DOCKER_HOST`][docker-daemon] and send requests to the `dind` service to execute the docker commands.
 
 ![dind-and-base](/img/docker/dind.jpeg)
 
-As shown above, only gitlab runner has direct access (privileged access) to the docker daemon, `dockerd` in above graph, running in the host machine. Thus, this CI/CD container instance can issue docker commands to the host machine to spawn or control new containers.
+As shown above, only gitlab runner has direct access (privileged access) to the docker daemon, `dockerd` in above graph, which is running in the host machine. Thus, this CI/CD container instance can issue docker commands to the host machine to spawn and control new containers.
 
-For `dind` container `C1`, it can issue docker command to its own `dockerd`, e.g., `docker build` or `docker image pull`, without sharing the host `dockerd`. In other words, `dind` provides an isolated docker execution environment. Therefore, `C2` and `C3` uses the docker build context from `C1`. Besides that, `C2` or `C3` cannot send any docker command to intervene `C4`, which can prevent some malicious users from `docker container stop $(docker ps -a)`.
+For `dind` container `C1`, it can issue docker command to its own `dockerd`, e.g., `docker build` or `docker image pull`, without sharing the host `dockerd`. In other words, `dind` provides an isolated and clean docker execution environment. Therefore, `C2` and `C3` uses the docker build context from `C1`. Besides that, `C2` or `C3` cannot send any docker command to intervene `C4`, which can prevent insecure issues such as `docker container stop $(docker ps -a)`.
 
 The obvious drawback is the performance overhead caused by laying a virtualization on top of another virtualization.
 
@@ -65,7 +65,7 @@ sudo gitlab-runner register -n \
   --docker-volumes /var/run/docker.sock:/var/run/docker.sock
 ```
 
-The gitlab docker instance will shared the `/var/run/docker.sock` from host machine, which is the domain socket address used by docker daemon. The runtime layout might look like this:
+The gitlab docker instance will shared the `/var/run/docker.sock` from host machine, which is the domain socket listened by docker daemon. What's more, compared with dind approach, it doesn't require the docker container to have privileged access to host docker engine. The runtime layout might look like below:
 
 ![image-bind-mount](/img/docker/bind-mount.jpeg)
 
@@ -73,9 +73,9 @@ In above graph, the `gitlab-runner` instance can control other containers or CI/
 
 > Notice that it’s using the Docker daemon of the Runner itself, and any containers spawned by Docker commands will be siblings of the Runner rather than children of the Runner.
 
-All the spawn containers will have direct access to the host docker daemon so that they can invoke `docker` command within their container.
+All the newly spawn containers will have direct access to the host docker daemon so that they can invoke `docker` command within their container. The advantage is that it doesn't introduce extra virtualization overhead.
 
-This one has some drawbacks, as it is mentioned by [gitlab document][bind-mount]:
+However, it has some drawbacks, as it is mentioned by [gitlab document][bind-mount]:
 
 1. malicious user can know surrounding running containers: `docker rm -f $(docker ps -a -q)`.
 
@@ -83,7 +83,7 @@ This one has some drawbacks, as it is mentioned by [gitlab document][bind-mount]
 
 3. volume sharing context not based on the container but the host.
 
-As for CI/CD purposes, `dind` doesn't have above drawbacks and it's a better choice.
+As for CI/CD purposes, `dind` doesn't have above drawbacks and it's a better choice since job isolation is the most critical criteria for concurrent jobs to run.
 
 [dind-reference]: https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#making-docker-in-docker-builds-faster-with-docker-layer-caching
 [dind-access-name]: https://docs.gitlab.com/ee/ci/docker/using_docker_images.html#accessing-the-services
