@@ -5,7 +5,7 @@ subtitle: "A brief intro to dind"
 published: tr
 date: 2020-05-04 16:00:44
 bigimg: /img/cute_owl.jpg
-tag: ["dokcer", "gitlab"]
+tag: ["docker", "gitlab"]
 ---
 
 ## Dind
@@ -43,7 +43,13 @@ From [gitlab dind reference][dind-reference], one benefit is that each CI job ha
 
 In the base image container, when running `docker` command, it will use [`DOCKER_HOST`][docker-daemon] and send requests to the container service to execute the docker commands.
 
-![dind-and-base]()
+![dind-and-base](/img/docker/dind.jpeg)
+
+As shown above, only gitlab runner has direct access (privileged access) to the docker daemon, `dockerd` in above graph, running in the host machine. Thus, this CI/CD container instance can issue docker commands to the host machine to spawn or control new containers.
+
+For `dind` container `C1`, it can issue docker command to its own `dockerd`, e.g., `docker build` or `docker image pull`, without sharing the host `dockerd`. In other words, `dind` provides an isolated docker execution environment. Therefore, `C2` and `C3` uses the docker build context from `C1`. Besides that, `C2` or `C3` cannot send any docker command to intervene `C4`, which can prevent some malicious users from `docker container stop $(docker ps -a)`.
+
+The obvious drawback is the performance overhead caused by laying a virtualization on top of another virtualization.
 
 ## Alternative: bind-mount
 
@@ -59,15 +65,17 @@ sudo gitlab-runner register -n \
   --docker-volumes /var/run/docker.sock:/var/run/docker.sock
 ```
 
-The gitlab docker instance will shared the `/var/run/docker.sock` from host machine, which is the domain socket address used by docker daemon. After this one, the runtime layout might look like this:
+The gitlab docker instance will shared the `/var/run/docker.sock` from host machine, which is the domain socket address used by docker daemon. The runtime layout might look like this:
 
-![image-bind-mount]()
+![image-bind-mount](/img/docker/bind-mount.jpeg)
+
+In above graph, the `gitlab-runner` instance can control other containers or CI/CD jobs through networks or by issuing requests to host docker daemon, e.g., `docker container stop`.
 
 > Notice that it’s using the Docker daemon of the Runner itself, and any containers spawned by Docker commands will be siblings of the Runner rather than children of the Runner.
 
-All the spawn containers will have direct access to the host docker so that they can invoke `docker` command within their container.
+All the spawn containers will have direct access to the host docker daemon so that they can invoke `docker` command within their container.
 
-This one has some drawbacks, as it is mentioned by the [document][bind-mount]:
+This one has some drawbacks, as it is mentioned by [gitlab document][bind-mount]:
 
 1. malicious user can know surrounding running containers: `docker rm -f $(docker ps -a -q)`.
 
@@ -75,7 +83,7 @@ This one has some drawbacks, as it is mentioned by the [document][bind-mount]:
 
 3. volume sharing context not based on the container but the host.
 
-As for CI/CD purposes, `dind` is the better choice.
+As for CI/CD purposes, `dind` doesn't have above drawbacks and it's a better choice.
 
 [dind-reference]: https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#making-docker-in-docker-builds-faster-with-docker-layer-caching
 [dind-access-name]: https://docs.gitlab.com/ee/ci/docker/using_docker_images.html#accessing-the-services
