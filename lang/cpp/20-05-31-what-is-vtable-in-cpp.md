@@ -86,7 +86,7 @@ Let's check a __modified__ code example from [pure virtual inheritance wiki][pur
 // wiki.cc
 struct A {
     virtual ~A() = default;
-    int aa; // demo purpose, add non-vtable pointer to A
+    int aa; // demo purpose, add non-vtable-pointer memory to A
     virtual void a_a() {}
 };
 
@@ -105,7 +105,7 @@ int main() {
 }
 ```
 
-Below is a virtualization of the interface hierarchy,
+Below is a virtualization of the inheritance hierarchy,
 
 ![vis-pure-virtual-inheritance](https://upload.wikimedia.org/wikipedia/commons/8/8e/Diamond_inheritance.svg)
 
@@ -144,9 +144,9 @@ $ clang -cc1 -std=c++11 -fdump-record-layouts wiki.cc
            |  nvsize=16, nvalign=8]
 ```
 
-As you can see, the `nvsize` of `D` is the sum of `nvsize` of `B` (8 bytes, a vtable pointer) and `C` (8 bytes, a vtable pointer), without virtual base `A` taken into account because `D` only has one `A` instance along the inheritance hierarchy. Thus, the `dsize` is `nvsize` of `D` plus one `A`'s `nvsize`.
+As you can see, the `nvsize` of `D` is the sum of `nvsize` of `B` (8 bytes, a vtable pointer) and `C` (8 bytes, a vtable pointer), without virtual base `A` taken into account because `D` only has __one__ `A` instance along the inheritance hierarchy. Thus, the `dsize` is `nvsize` of `D` plus one `A`'s `nvsize`.
 
-In general, the virtual inheritance vtable implementation is quite complicated. You can try to remove `int aa` line from the pure virtual base `A`. The result is quite surprising.
+In general, the virtual inheritance vtable implementation is quite complicated. You can try to remove `int aa;` line from the pure virtual base `A`. The result is quite surprising.
 
 ---
 
@@ -157,13 +157,13 @@ Here's an [example][compiler-explorer] of how vtable is implemented in assembly 
 ```c
 vtable for Foo:
         .quad   0
-        .quad   typeinfo for Foo // RTTI for foo
-        .quad   Foo::method1()   // where vtable starts
-        .quad   Bar::method2()
+        .quad   typeinfo for Foo    // RTTI for foo
+        .quad   Foo::method1()      // where vtable starts
+        .quad   Bar::method2()      // for method 2
         .quad   Foo::~Foo() [complete object destructor]
         .quad   Foo::~Foo() [deleting destructor]
 vtable for Bar:
-        .quad   0 // qword -> 8 bytes, will be used as offset
+        .quad   0   // qword -> 8 bytes, used as mask for multi-inheritance
         .quad   typeinfo for Bar
         .quad   Bar::method1()
         .quad   Bar::method2()
@@ -225,11 +225,11 @@ A visualization for stack layout of above assembly code,
 -80 | &bar (bar_arr[0])   |
 ```
 
-As we can see, as long as the compiler knows the type information and method name at compile time, it knows where to load the real function call from the object's vtable.
+As we can see, as long as the compiler knows the type information and method name at compile time, it knows where to load the real function call address from the object's vtable.
 
 ## Summary
 
-Summarizing our [example](#vtable-layout) above,
+Summarizing our [example](#vtable-layout) above.
 
 ![vtable-layout](/img/lang/cpp/vtable-part-1.png)
 
