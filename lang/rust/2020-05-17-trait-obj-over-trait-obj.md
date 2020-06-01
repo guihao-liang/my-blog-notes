@@ -17,7 +17,7 @@ After reading the blog [explaining the implementation of trait object][3], the p
 
 ## dynamic cast
 
-In Cpp, `dynmiac_cast` is quite common for polymorphism and can be used to switch `vtable`s. Can Rust do the same thing?
+In Cpp, `dynamic_cast` is quite common for polymorphism and can be used to switch `vtable`s. Can Rust do the same thing?
 
 ```rust
 trait Bar {
@@ -81,7 +81,6 @@ bar = TraitObject {
     vtable: foo.vtable,
 };
 ```
-
 
 [play-trait-cast]: https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=52c669d40aeda9719e968181abbc2784
 [trait-impl]: https://doc.rust-lang.org/nightly/std/raw/struct.TraitObject.html

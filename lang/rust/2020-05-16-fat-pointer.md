@@ -53,3 +53,9 @@ struct FooVtable {
     method: fn(*const ()) -> String,
 }
 ```
+
+## references
+
+* [Any dynamic-cast for trait object?][1]
+
+[1]:
