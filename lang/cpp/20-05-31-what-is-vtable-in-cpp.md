@@ -17,7 +17,7 @@ We all know virtual function call cannot be inlined and it has overhead of runti
 
 Reading high-level C/C++ code won't give us any hints about the underlying implementation. In most cases, we can have a better understanding from low level assembly code since it's very close to how machine understands the high level concept.
 
-Through this post, I will use this high level Cpp code `demo.cc` for demonstration:
+Through this post, I will use this high level Cpp code [demo.cc][compiler-explorer] for demonstration:
 
 ```cpp
 #include <cstdio>
@@ -162,7 +162,7 @@ In general, the virtual inheritance vtable implementation is quite complicated. 
 
 ## Assembly code for vtable implementation
 
-Here's an [example][compiler-explorer] of how vtable is implemented in assembly code level. Below is using [GNU assembler directives](https://ftp.gnu.org/old-gnu/Manuals/gas-2.9.1/html_chapter/as_7.html) for vtable declaration: <a name="vtable-layout"></a>
+Here's an [code example][compiler-explorer] of how vtable is implemented in assembly code level. Below is using [GNU assembler directives](https://ftp.gnu.org/old-gnu/Manuals/gas-2.9.1/html_chapter/as_7.html) for vtable declaration: <a name="vtable-layout"></a>
 
 ```c
 vtable for Foo:
@@ -225,10 +225,10 @@ A visualization for stack layout of above assembly code,
 
 ```shell
 # rbp - offset | c syntax | [// comment]
--24 | ptr (Bar*)          | // like counter index i
+-24 | bar_arr (Bar**)     | // used to set up start and end
 -32 | bar_arr (Bar**)     | // start of bar_arr[]
 -40 | bar_arr + 2         | // end of bar_arr[]
--48 | temp var store Bar* |
+-48 | ptr Bar*            | // like loop counter index i
 -56 | bar (a vtable ptr)  |
 -64 | foo (a vtable ptr)  |
 -72 | &foo (bar_arr[1])   |
@@ -257,5 +257,5 @@ Therefore, loading vtable pointer and performing runtime function look up will p
 
 [pure-virtual-class]: https://en.wikipedia.org/wiki/Virtual_inheritance
 [rust-discus-vtable]: https://users.rust-lang.org/t/why-cant-i-do-dynamic-cast-in-rust-as-i-do-in-c/42793
-[compiler-explorer]: https://godbolt.org/z/RrU6AA
+[compiler-explorer]: https://godbolt.org/z/WHmbhr
 [nvsize-abi]: https://itanium-cxx-abi.github.io/cxx-abi/abi.html#layout
