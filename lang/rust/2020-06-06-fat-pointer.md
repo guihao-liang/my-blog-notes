@@ -1,6 +1,6 @@
 ---
-title: "Learn rust fat pointer from a Cpp programmer's perspective"
-subtitle: "A peek at TraitObject and Slice implementation"
+title: "Learn Rust fat pointer and type erasure from a Cpp programmer's perspective"
+subtitle: "Understand TraitObject and Slice implementation"
 date: 2020-06-06 16:25:02
 author: Guihao Liang
 published: true
@@ -35,7 +35,7 @@ pub struct TraitObject {
 }
 ```
 
-Note that this is the __final__ fat pointer **physical** memory layout for slice object **but** not for trait object. It's just a **conceptual** memory layout that is convenient for us to visualize trait object. Check [trait object conceptual layout](#view-from-asm) for more details.
+Note that this is the fat pointer **physical** stack layout for slice object **but** not always true for trait object. For trait object, `second` is a constant and it may be optimized to use register not stack memory. Check laster part [trait object type erasure](#view-from-asm) for more details.
 
 ## inner vs external vpointer
 
@@ -93,7 +93,7 @@ From [assembly code](https://godbolt.org/z/pzWcDF):
     mov     qword ptr [rsp + 72], rcx
 ```
 
-For slice type, the **physical** layout aligns with the C-ABI compatible [layout](#layout). As the comparison with [trait object conceptual layout](#view-from-asm), the physical layout matches because `second` (length of slice) can be different for different slice instances, even though they share the same slice type.
+For slice type, the **physical** layout aligns with the C-ABI compatible [layout](#layout). As the comparison with [trait object type erasure](#view-from-asm), the physical layout **always** matches because unlike the `second` (__length__ of slice), is not a __constant__ and can be different on instance-by-instance, even though they share the same slice type.
 
 ## trait object layout
 
@@ -128,11 +128,43 @@ fn main() {
 As we can see, object implements `Foo` should also implement `foo_method` and `bar_method`. Keep in mind, in Rust, there's no inheritance.`Foo` is not a `Bar`. The syntax `trait Foo: Bar` simply means if type wants to implement `Foo`, it must also implement `Bar`.
 
 ```c
-# C++ equivalent for `import Foo for u8`
+# C++ equivalent for `impl Foo for u8`
 class Baz : public Foo, public Bar { ... }
 ```
 
-The `Baz` should carry a vpointer that has all information about the virtual functions, which are trait methods defined in `Foo` and `Bar` declaration. Since there's no multiple inheritance in Rust, its `vtable` can be as simple as what we've seen in [vtable for C++](../cpp/20-05-31-what-is-vtable-in-cpp.md). In other words, it only needs to list all methods inside of the vtable in a __deterministic order__. That is to say, if we implement `Foo` for other types, the `bar_method` should have the same position in the vtable. The story is complicated for vtable layout when multi-inheritance is involved.
+The `Baz` should carry a vpointer that has all information about the virtual functions, which are trait methods defined in `Foo` and `Bar` declaration. Since there's no multiple inheritance in Rust, its `vtable` can be as simple as what we've seen in [vtable for C++](../cpp/20-05-31-what-is-vtable-in-cpp.md).
+
+### different vtable layout for different Trait type
+
+In other words, `Foo` and `Bar` are __siblings__ and there's no hierarchy between them, i.e., a `Foo` is not a child of `Bar`. At compile time, all other dependent traits are known for the base trait and the compiler can define vtable layout for each different traits because different traits can not be dynamically cast to others, i.e., no hierarchical inheritance in Rust. I will explain this later.
+
+From this [example code](https://godbolt.org/z/Wf3Dow), we know
+
+```rust
+trait Bar: A + B { /* ... */ }
+```
+
+Since there's no multiple inheritance, the vtable for `Bar` can just __simply stacks__ methods from `A`, `B` and `Bar` itself.
+
+```c
+.L__unnamed_1:
+        .quad   core::ptr::drop_in_place // destructor
+        .quad   1 // size
+        .quad   1 // align
+        .quad   example::Bar::bar_method
+        .quad   example::B::b_method
+        .quad   example::A::a_method
+```
+
+Thus, the relative order of the methods is __deterministic order__. When you want to call `b_method` from a trait object `&dyn Bar`, the compiler knows to offset vtable by 32.
+
+Also, vtable will __only__ be generated when Trait Object is requested. That is to say, if you don't use it, you don't pay the storage for the vtable. Feel free to follow the comment in above [example](https://godbolt.org/z/Wf3Dow) and check corresponding assembly code.
+
+### different trait object for different Trait type
+
+For different trait types, the different trait objects are synthesized by rust compiler. For example, `Foo` trait would have a corresponding trait object `TraitObjectFoo` when `&dyn Foo` is requested, whereas `Bar` has `TraitObjectBar`. That is to say, even though `Foo` extends `Bar`, it's __prohibited__ to __dynamically cast__ `&dyn Foo` to `&dyn Bar`, which is analogous to convert `TraitObjectFoo` to `TraitObjectBar`.
+
+Let's go through an example to get better understanding of above observation.
 
 ```rust
 // below is all pseudo code
@@ -164,6 +196,8 @@ At runtime, `foo` has a vtable `VtableFoo` and compiler knows the offset of `bar
 foo.vtable.offset(4)(foo.data);
 ```
 
+### vpointer is not always stacked in stack
+
 <a name="view-from-asm"></a> We can also verify above in [assembly code](https://godbolt.org/z/9JpvM3):
 
 ```c
@@ -183,19 +217,68 @@ call    qword ptr [rip + .L__unnamed_1+32] // bar_method(self)
         .quad   example::Bar::bar_method
 ```
 
-As we can see in above assembly example, `let foo:&dyn Foo = &x` only takes the address of `x` (1 qword) instead of constructing this [C-ABI layout](#layout) for variable `foo`, which requires 2 qwords. Thus, the [C-ABI layout](#layout) is not the final memory layout for the compiled rust code. We can verify this by running [std::raw::transmute][trait-object-doc] example and reading the compiled [assembly code](https://godbolt.org/z/TJtm37):
+As we can see in above assembly example, `let foo:&dyn Foo = &x` only takes the address of `x` (1 qword) instead of constructing this [C-ABI layout](#layout) on stack for variable `foo`, which requires 2 qwords. Instead, vpointer is stored in register in a disposable manner. We can also verify this by running [std::raw::transmute][trait-object-doc] example and checking the [assembly code](https://godbolt.org/z/TJtm37):
 
 ```c
-// load vtable pointer address
+// load vtable pointer address to rax; hit and run
 // rip contains address of current instruction being executed in CPU
-        lea     rax, [rip + .L__unnamed_2]
+    lea     rax, [rip + .L__unnamed_2]
 // ...
 // let raw_object: raw::TraitObject = unsafe { mem::transmute(object) };
-        mov     qword ptr [rsp + 232], rcx // data*
-        mov     qword ptr [rsp + 240], rax // vtable*
+    mov     qword ptr [rsp + 232], rcx // data*
+    mov     qword ptr [rsp + 240], rax // vtable*
 ```
 
-The reason __I guess__ is that the compiler knows the vtable address for `Foo` __type__, i.e., `.L__unnamed_2`. So there's no need to pay extra storage for all `Foo` instances since all of them share the same vtable from `Foo` __type__. This is an __optimization__ benefited from the fat pointer or external vtable layout.
+The reason is that the compiler knows variable `x` is a `Foo` type and the vtable address for `Foo`, i.e., a __const__ relative offset `.L__unnamed_2`. Thus, there's no need to pay extra storage in stack for `Foo` instance `x` and register can be used for faster access the vpointer for `Foo`. This is an __optimization__ benefited from the fat pointer or external vtable layout. It's like:
+
+```c
+// c++ pseudo code
+constexpr vpointer_for_foo = 0x1234;
+Foo foo;
+foo.data = &x;
+foo.vpointer = vpointer_for_foo;
+foo.vpointer.offset(4)(foo.data);
+```
+
+The vpointer can be __inlined__ with optimization:
+
+```c
+// c++ pseudo code
+constexpr vpointer_for_foo = 0x1234;
+int* data = &x;
+(vpointer_for_foo+4)(data);
+```
+
+Therefore, register is sufficient to handle inlined value and no need to bother stack because it's much more slower.
+
+### vpointer is stacked during type erasure
+
+In this __type erasure__ [example](https://godbolt.org/z/pZG-BF), we can __erase__ the `x`'s type info by
+
+```rust
+trait Base {
+    fn base_method(&self) {
+        println!("this is Base");
+    }
+}
+
+// x type info is erased when returned
+fn test_dyn_ret(x: &dyn Base) -> &dyn Base {
+    x.base_method();
+    x
+}
+```
+
+In __outer__ scope of `test_dyn_ret` function, `x` is a `Foo` type that compiler __assures__. However, type information is __erased__ in inner scope of `test_dyn_ret`, and the compiler doesn't have any knowledge of the type of `x` anymore. Compiler only knows a `&dyn Base` is returned not assuring the underlying instance's type info inside that returned trait object. Therefore, it needs to store this vpointer to __stack not only in callee frame but also in caller frame__, i.e., the outer scope. The reason of this different behavior with previous [inlined vpointer](#view-from-asm) is that it doesn't know how to infer and load the vpointer value inline, otherwise it would use register.
+
+```c
+    // let foo = test_dyn_ret(&y);
+    call    example::test_dyn_ret
+    mov     qword ptr [rsp + 16], rax // vpointer in caller stack
+    mov     qword ptr [rsp + 8], rdx  // self in caller stack
+```
+
+Above layout is the [C-ABI layout](#layout) we've seen. That's __type erasure__ for rust and the most common usage for `Trait`.
 
 ## references
 
