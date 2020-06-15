@@ -39,7 +39,7 @@ Note that this is the fat pointer **physical** stack layout for slice object **b
 
 ## inner vs external vpointer
 
-As my previous [post](../cpp/20-05-31-what-is-vtable-in-cpp.md) discussed, in C++, object carries a vtable pointer, even though you don't use those virtual functions, or use any polymorphism, you still have to carry a vtable pointer and pay for the increased object size. Some people call this vtable pointer pattern as `inner vpointer` since it resides inside of each object.
+As my previous [post]({% post_url /lang/cpp/20-05-31-what-is-vtable-in-cpp %}) discussed, in C++, object carries a vtable pointer, even though you don't use those virtual functions, or use any polymorphism, you still have to carry a vtable pointer and pay for the increased object size. Some people call this vtable pointer pattern as `inner vpointer` since it resides inside of each object.
 
 For Rust, it's different. If you don't touch any polymorphism by using trait object, you don't pay for extra size to carry this vtable pointer. Every function call is static, even for those virtual functions. When you use trait object, you use this extra vtable pointer to perform virtual functions dispatch and pay for the overhead.
 
@@ -132,7 +132,7 @@ As we can see, object implements `Foo` should also implement `foo_method` and `b
 class Baz : public Foo, public Bar { ... }
 ```
 
-The `Baz` should carry a vpointer that has all information about the virtual functions, which are trait methods defined in `Foo` and `Bar` declaration. Since there's no multiple inheritance in Rust, its `vtable` can be as simple as what we've seen in [vtable for C++](../cpp/20-05-31-what-is-vtable-in-cpp.md).
+The `Baz` should carry a vpointer that has all information about the virtual functions, which are trait methods defined in `Foo` and `Bar` declaration. Since there's no multiple inheritance in Rust, its `vtable` can be as simple as what we've seen in [vtable for C++]({% post_url /lang/cpp/20-05-31-what-is-vtable-in-cpp %}).
 
 ### different vtable layout for different Trait type
 

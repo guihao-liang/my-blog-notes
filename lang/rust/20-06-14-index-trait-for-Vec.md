@@ -45,7 +45,7 @@ where
 
 Even though we know `Idx` type must be `sized` in order to be passed by value, the compiler doesn't care it at generic declaration time. That's reasonable, why force the compiler to think that far? The `Idx` type might not be any unsized type forever.
 
-During a definition or implementation, if a `trait-typed` **value** is passed in, compiler will error out since `unsized` type can't be passed by value. Check the comparison between trait type, trait object in my [previous post](../rust/2020-05-17-trait-obj-over-trait-obj.md).
+During a definition or implementation, if a `trait-typed` **value** is passed in, compiler will error out since `unsized` type can't be passed by value. Check the comparison between trait type, trait object in my [previous post]({% post_url 20-06-12-trait-over-trait %}).
 
 The reason to declare this as `?Sized` instead of strictly `Sized` is that it serves as a __forward-compatible__ for __unsized local__. You can turn this feature on by adding `#![feature(unsized_locals)]`. See an example in [playground](https://play.rust-lang.org/?version=nightly&mode=debug&edition=2018&gist=2ddbdf71ea67ba17391d1c98d08a18cb).
 
@@ -113,7 +113,7 @@ Run above code in [playground](https://play.rust-lang.org/?version=nightly&mode=
 
 `Vec<T>` indexing will redirect into indexing on `[T]`, which also implements `Index` trait. Then `[T]` will delegate the indexing job to an instance that implements the `SliceIndex<T>` trait in order to index on slice type.
 
-The chain is quite long and involves a lot of function calls. Fortunately, the whole chain is __inlined__ (`#[inline]`) so that the overhead of extra storage for fat pointer `&[T]` can be negligible. Check more from my previous [fat pointer blog](../rust/20-06-06-fat-pointer.md).
+The chain is quite long and involves a lot of function calls. Fortunately, the whole chain is __inlined__ (`#[inline]`) so that the overhead of extra storage for fat pointer `&[T]` can be negligible. Check more from my previous [fat pointer blog]({% post_url 20-06-06-fat-pointer %}).
 
 ## Reference
 
