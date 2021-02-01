@@ -4,7 +4,7 @@ subtitle: "A brief tour to golang interface value"
 author: Guihao Liang
 published: true
 bigimg: "/img/golang.jpg"
-tags: ['go', 'rust', 'assembly']
+tags: ['golang', 'rust', 'assembly']
 ---
 
 Recently, I have a project that requires me to learn golang in a short time. IMO, all language with GC is easy to learn and so does golang.
@@ -182,6 +182,6 @@ call    rdx                         # _8
 When passing a pointer to interface object, it passes the address of the object to `x.__object` directly without creating a reference to a temp object. Well, the object is created directly on heap, and that's why there's no extra temp object.
 
 [book]: https://www.gopl.io/
-[code-example]: https://godbolt.org/z/LvDoh2
+[code-example]: https://godbolt.org/z/Snn_Yt
 [stephen-A]: http://www.cs.columbia.edu/~sedwards/
 [blog-fat-pointer]: /2020/06/06/fat-pointer
