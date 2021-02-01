@@ -10,9 +10,11 @@ tags: ['golang']
 TL;DR,
 
 1. memory allocation happens immediately when converting between string and slice.
-2. use original ASCII string for random read to avoid extra memory allocations.
-3. no extra COW (copy-on-write) optimization for reading string by a byte slice.
-4. whenever constructing slice from string, golang interprets that you want to write. Memory allocation is done during construction.
+   1. rune slice is meant to random read or write UTF encoded string.
+   2. byte slice is meant to write.
+   3. no COW (copy-on-write) optimization for reading string through slice.
+2. use original ASCII string instead of byte slice for reading.
+3. use `range` to sequential read UTF encoded string, instead of rune slice.
 
 ## random read
 
@@ -27,9 +29,9 @@ letters := []rune(str)
 
 When we do `letters[1]`, does it decodes UTF character on the fly?
 
-The answer is no. The UTF is **variant** length encoding, so there's no possible way to decode a random position without decoding all positions ahead. Rune slice is not index-wise corresponding to underlying bytes of string. That's to say, during construction, all bytes from string will be read and decoded. The construction operation is quite expensive.
+The answer is no. The UTF is **variant** length encoding, so there's no possible way to decode a random position without decoding all positions ahead. Rune slice is not index-wise mapped to underlying bytes of string. That's to say, during construction, all bytes from string will be read and decoded. The construction operation is quite expensive.
 
-What's more, COW (copy-on-write) for rune slice is unnecessary. If you construct a rune slice from string and never touch it, optimizer can ignore that construction.
+What's more, COW (copy-on-write) for rune slice is unnecessary. If you construct a rune slice from string and never read/write it, optimizer can ignore that construction.
 
 From assembly code like [this](https://godbolt.org/z/8bf69o), golang calls `runtime.stringtoslicerune`, which hides the detail of the memory allocation. Therefore, I turn to golang benchmark tool.
 
@@ -76,9 +78,11 @@ BenchmarkStrToRunes-12            624459              1658 ns/op            4096
 
 As we know, `rune` is an alias to `int`, which is quad-word sized (4 bytes). As a result, the rune slice is 4096B, which is indeed **4x** of the corresponding ASCII byte slice.
 
+Rune slice is **only** meant for **random read** or **write** UTF strings. If you use it for sequential read, it would be memory inefficient, shown above. For sequential read UTF string, check [here](#sequential-access).
+
 ### string to byte slice
 
-Converting string to byte slice for reading is unnecessary. Index operator on original string is sufficient.
+Converting string to byte slice for reading is unnecessary. Index operator on original string is sufficient for random read and `range` for sequential read.
 
 What I want to discuss here is whether there's COW for byte slice. Unlike rune slice, byte slice is element-wise mapping from string. COW is possible.
 
@@ -99,14 +103,14 @@ func BenchmarkStrToBytesCow(b *testing.B) {
 Benchmark test result shows allocation happens even there's no write to the byte slice constructed from a string.
 
 ```bash
-BenchmarkStrToBytesCow-12        9071371     131 ns/op      1024 B/op     1 allocs/op
+BenchmarkStrToBytesCow-12     9071371     131 ns/op      1024 B/op     1 allocs/op
 ```
 
-That is to say, **whenever** you initialize byte slice from string, you mean to **write** even if you don't.
+That is to say, **whenever** you initialize byte slice from string, you mean to **write** even if you don't and new memory is allocated.
 
 ### string from slice
 
-Whenever you convert slice to string, new memory is allocated immediately. The reasoning is simple: string is immutable, and slice content can be mutated. Therefore, string needs to have a copy of the content to make sure it doesn't change by other slices after the construction.
+Whenever you convert slice to string, new memory is allocated immediately. The reasoning is simple: string is immutable, and slice content can be mutated. Therefore, string needs to have a **copy** of the content in case the underlying memory pointed by the byte slice is modified afterwards.
 
 ```golang
 # simple benchmark
@@ -128,7 +132,7 @@ The output for this benchmark test:
 BenchmarkBytesToStr-12     9468996    125 ns/op    1024 B/op     1 allocs/op
 ```
 
-As it's shown above, there's one allocation for each construction from byte slice to string. No COW is observed.
+As it's shown above, there's one allocation for each construction from byte slice to string. No COW is observed since it's troublesome to monitor the memory pointed by the byte slice.
 
 ## Sequential access
 
@@ -158,14 +162,11 @@ func BenchmarkStrToRuneRange(b *testing.B) {
 Benchmark output:
 
 ```bash
-goos: darwin
-goarch: amd64
-pkg: go_book/ch11
-BenchmarkStrToRunes-12            624459              1658 ns/op            4096 B/op          1 allocs/op
-BenchmarkStrToRuneRange-12       1660866               723 ns/op               0 B/op          0 allocs/op
+BenchmarkStrToRunes-12       624459        1658 ns/op        4096 B/op       1 allocs/op
+BenchmarkStrToRuneRange-12  1660866         723 ns/op           0 B/op       0 allocs/op
 ```
 
-No extra allocation is needed and it's twice faster than method that converts string to rune slice.
+No extra allocation is needed and it's twice faster than method from previous section that converts string to rune slice.
 
 
 [range rune]: https://godbolt.org/z/W95ofb
