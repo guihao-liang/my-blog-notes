@@ -10,14 +10,16 @@ date: 2021-01-31 17:51:46
 
 TL;DR,
 
-1. memory allocation happens immediately when converting between string and slice.
-   1. rune slice is meant to random read or write UTF encoded string.
-   2. byte slice is meant to write.
-   3. no COW (copy-on-write) optimization for reading string through slice.
-2. use original ASCII string instead of byte slice for reading.
-3. use `range` to sequential read UTF encoded string, instead of rune slice.
+Memory allocation happens immediately when converting between string and slice. To avoid using unnecessary memory, below is the table when reading utf-encoded string:
 
-## random read
+string content | random read | sequential read | write
+| - | - | - | - |
+| ascii | string | string | `[]byte`
+| utf-8 | `[]rune` | `range` | `[]rune`
+
+---
+
+## Random read
 
 ### string to rune slice
 
@@ -28,9 +30,9 @@ str := "世界"
 letters := []rune(str)
 ```
 
-When we do `letters[1]`, does it decodes UTF character on the fly?
+When we do `letters[1]`, does it decode UTF-8 character on the fly?
 
-The answer is no. The UTF is **variant** length encoding, so there's no possible way to decode a random position without decoding all positions ahead. Rune slice is not index-wise mapped to underlying bytes of string. That's to say, during construction, all bytes from string will be read and decoded. The construction operation is quite expensive.
+The answer is no. The UTF is **variant** length encoded, so there's no way to know the **index** of this UTF-8 character in the string without knowing all characters ahead. Rune slice is not index-wise mapped to underlying bytes of string. That's to say, during construction, all bytes from string will be read and decoded. The construction operation is quite expensive.
 
 What's more, COW (copy-on-write) for rune slice is unnecessary. If you construct a rune slice from string and never read/write it, the optimizer can ignore that construction.
 
@@ -107,11 +109,11 @@ Benchmark test result shows allocation happens even there's no write to the byte
 BenchmarkStrToBytesCow-12     9071371     131 ns/op      1024 B/op     1 allocs/op
 ```
 
-That is to say, **whenever** you initialize byte slice from string, you mean to **write** even if you don't and new memory is allocated.
+That is to say, **whenever** you initialize byte slice from string, you mean to use it for **write**. Even if you don't write, new memory is allocated anyways.
 
 ### string from slice
 
-Whenever you convert slice to string, new memory is allocated immediately. The reasoning is simple: string is immutable, and slice content can be mutated. Therefore, string needs to have a **copy** of the content in case the underlying memory pointed by the byte slice is modified afterward.
+Whenever you convert slice to string, new memory is allocated immediately. The reasoning is simple: string is **immutable**, and slice content can be mutated. Therefore, string needs to have a **copy** of the content in case the underlying memory pointed by the byte slice is modified afterward.
 
 ```golang
 # simple benchmark
@@ -135,11 +137,13 @@ BenchmarkBytesToStr-12     9468996    125 ns/op    1024 B/op     1 allocs/op
 
 As it's shown above, there's one allocation for each construction from byte slice to string. No COW is observed since it's troublesome to monitor the memory pointed by the byte slice.
 
-## Sequential access
+---
 
-You can also construct byte or rune slice to iterate contents in the string. That would be **inefficient** since extra memory allocation will drag down the performance.
+## Sequential read
 
-The better ways are to
+You can also construct byte or rune slice to iterate the content of the string. That would be **inefficient** since extra memory allocation will drag down the performance.
+
+The better ways:
 
 1. use original string to read bytes by either `range` or index operator.
 
@@ -168,7 +172,6 @@ BenchmarkStrToRuneRange-12  1660866         723 ns/op           0 B/op       0 a
 ```
 
 No extra allocation is needed and it's twice faster than the method from the previous section that converts string to rune slice.
-
 
 [range rune]: https://godbolt.org/z/W95ofb
 [char go]: https://blog.golang.org/strings
