@@ -13,9 +13,9 @@ TL;DR,
 Memory allocation happens immediately when converting between string and slice. To avoid using unnecessary memory, below is the table when reading utf-encoded string:
 
 string content | random read | sequential read | write
-| - | - | - | - |
-| ascii | string | string | `[]byte`
-| utf-8 | `[]rune` | `range` | `[]rune`
+ - | - | - | -
+ ascii | string | string | `[]byte`
+ utf-8 | `[]rune` | `range` | `[]rune`
 
 ---
 
