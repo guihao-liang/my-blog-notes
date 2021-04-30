@@ -3,7 +3,7 @@ title: "Trait over Trait"
 subtitle: "Trait type vs Trait object"
 author: Guihao Liang
 date: 2020-06-14 20:16:16
-published: false
+draft: true
 tags: ['rust', 'c++']
 categories: ['rust', 'c++']
 ---

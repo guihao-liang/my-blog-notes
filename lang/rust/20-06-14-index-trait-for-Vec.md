@@ -3,10 +3,9 @@ title: "Understand rust Vec indexing"
 subtitle: "declaration vs definition time compiler check"
 date: 2020-06-14 14:49:50
 author: Guihao Liang
-published: true
-bigimg: "/img/cute_owl.jpg"
 tags: ['rust']
 categories: ['rust']
+draft: true
 ---
 
 

@@ -2,8 +2,6 @@
 layout: post
 title: Install-name-id and install-name-value on Mac
 subtitle: "Runtime linking with install-name-id and value"
-published: true
-bigimg: "/img/tiles.jpg"
 tag: ["cpp"]
 categories: ["cpp"]
 date: 2020-04-22 18:49:12

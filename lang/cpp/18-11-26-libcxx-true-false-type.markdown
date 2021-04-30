@@ -1,8 +1,9 @@
 ---
 layout: post
 title: "libcxx true/false type"
-date:	2018-11-26 14:34:35 -08000
-categoires: lang cpp
+date: 2018-11-26 14:34:35
+categories: ["lang", "cpp"]
+draft: true
 ---
 
 ```cpp

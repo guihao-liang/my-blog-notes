@@ -2,8 +2,6 @@
 layout: post
 title: "How AWS CPP SDK handles retry on S3 errors?"
 subtitle: "An alternative documentation for retry strategy of AWS CPP SDK"
-published: true
-bigimg: /img/color_path.jpg
 tag: ["aws", "cpp"]
 categories: ["aws", "cpp"]
 date: 2020-04-12 21:33:32

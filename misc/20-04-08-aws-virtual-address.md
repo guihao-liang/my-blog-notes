@@ -5,8 +5,6 @@ subtitle: "virtual-hosted style vs path-style"
 date: 2020-04-08 21:02:08
 categories: [aws, cpp]
 tag: [aws, cpp]
-bigimg: /img/rain_drop.jpg
-published: true
 ---
 
 Recently, I upgraded the [AWS CPP SDK](https://github.com/apple/turicreate/pull/3029) from `0.40`, which was integrated to `turicreate` codebase around 2017, to `1.7.143`.

@@ -1,9 +1,7 @@
 ---
-title: "Understand rust Vec indexing"
-subtitle: "declaration vs definition time compiler check"
+title: "my rust reading list"
 author: Guihao Liang
-published: false
-bigimg: "/img/cute_owl.jpg"
+draft: true
 tags: ['rust']
 categories: ['rust']
 ---

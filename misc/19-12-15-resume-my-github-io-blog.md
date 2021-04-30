@@ -4,7 +4,6 @@ title:  "Resume personal site with Jekyll on Docker"
 subtitle: "Network troubleshooting for docker-for-mac client"
 date:  2019-12-29 12:27:42
 categories: [docker, network, jekyll]
-bigimg: /img/path.jpg
 tag: [docker, jekyll, network]
 ---
 

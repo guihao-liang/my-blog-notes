@@ -1,6 +1,6 @@
 ---
-author: Guihao Liang
-published: false
+title: "random topics"
+draft: true
 ---
 
 architecture-wise

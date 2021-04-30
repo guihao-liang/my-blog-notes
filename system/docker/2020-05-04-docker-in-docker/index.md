@@ -4,7 +4,6 @@ title: "Use docker-in-docker in CI/CD"
 subtitle: "A brief intro to dind"
 published: tr
 date: 2020-05-04 16:00:44
-bigimg: /img/cute_owl.jpg
 tag: ["docker", "gitlab"]
 ---
 
@@ -43,7 +42,7 @@ From [gitlab dind reference][dind-reference], one benefit is that each CI job ha
 
 In the base image container, when running `docker` command, it will use [`DOCKER_HOST`][docker-daemon] and send requests to the `dind` service to execute the docker commands.
 
-![dind-and-base](/img/docker/dind.jpeg)
+![dind-and-base](./dind.jpeg)
 
 As shown above, only gitlab runner has direct access (privileged access) to the docker daemon, `dockerd` in above graph, which is running in the host machine. Thus, this CI/CD container instance can issue docker commands to the host machine to spawn and control new containers.
 
@@ -67,7 +66,7 @@ sudo gitlab-runner register -n \
 
 The gitlab docker instance will shared the `/var/run/docker.sock` from host machine, which is the domain socket listened by docker daemon. What's more, compared with dind approach, it doesn't require the docker container to have privileged access to host docker engine. The runtime layout might look like below:
 
-![image-bind-mount](/img/docker/bind-mount.jpeg)
+![image-bind-mount](./bind-mount.jpeg)
 
 In above graph, the `gitlab-runner` instance can control other containers or CI/CD jobs through networks or by issuing requests to host docker daemon, e.g., `docker container stop`.
 
