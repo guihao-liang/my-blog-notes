@@ -2,9 +2,7 @@
 title: "Understand C++ vtable from assembly code (part 1)"
 subtitle: "A glance at vtable implementation"
 author: Guihao Liang
-published: true
 date: 2020-05-30 18:04:37
-bigimg: "/img/cute_owl.jpg"
 tags: ['cpp', 'c']
 categories: ['cpp', 'c']
 ---
@@ -241,7 +239,7 @@ As we can see, as long as the compiler knows the type information and method nam
 
 Summarizing our [example](#vtable-layout) above.
 
-![vtable-layout](/img/lang/cpp/vtable-part-1.png)
+![vtable-layout](./vtable-part-1.png)
 
 Each object carries a __vtable pointer__ pointing to a __vtable data structure__ that gathers addresses of all virtual functions calls associated with its type/class, including its destructor. In [above example](#vtable-layout), it's the address associated with assembly global label `vtable for Foo` and `vtable for Bar`.
 

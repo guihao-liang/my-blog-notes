@@ -1,9 +1,8 @@
 ---
 title: "Golang interface value: fat pointer again?"
 subtitle: "A brief tour to golang interface value"
+date: 2020-07-15 14:16:33
 author: Guihao Liang
-published: true
-bigimg: "/img/golang.jpg"
 tags: ['golang', 'rust', 'assembly']
 ---
 

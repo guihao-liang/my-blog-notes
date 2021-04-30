@@ -1,6 +1,7 @@
 ---
 title: transform the turicreate with black and flake8
-published: false
+draft: true
+date: 2020-01-23 14:15:08
 ---
 
 [opened web pages](https://www.one-tab.com/page/GUff1fzOReqAnqF67guG4g)

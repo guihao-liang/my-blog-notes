@@ -2,9 +2,7 @@
 title: "Learn rust mut from a Cpp programmer's perspective"
 subtitle: "Rust mut vs Cpp const"
 author: Guihao Liang
-published: true
 date: 2020-05-30 18:04:37
-bigimg: "/img/tiles.jpg"
 tags: ['rust', 'cpp', 'c']
 categories: ['rust', 'cpp', 'c']
 ---

@@ -1,8 +1,7 @@
 ---
 title: "Cross Compile OpenMP for IOS"
 author: Guihao Liang
-published: true
-bigimg: /img/color_path.jpg
+date: 2019-12-17 14:15:32
 tags: ['cpp', 'clang']
 categories: ['compile', 'cpp', 'ios']
 ---

@@ -1,10 +1,8 @@
 ---
-title: "Learn Rust fat pointer and type erasure from a Cpp programmer's perspective"
+title: "Learn Rust fat pointer from a Cpp programmer's perspective"
 subtitle: "Understand TraitObject and Slice implementation"
 date: 2020-06-06 16:25:02
 author: Guihao Liang
-published: true
-bigimg: "/img/tiles.jpg"
 tags: ['rust', 'c', 'cpp']
 categories: ['rust', 'cpp', 'c']
 ---

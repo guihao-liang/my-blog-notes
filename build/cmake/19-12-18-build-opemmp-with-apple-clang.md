@@ -3,8 +3,6 @@ title: "Build OpenMP with Apple Clang"
 subtitle: "In-tree and out-of-tree build in practice with CMake"
 author: Guihao Liang
 date: 2019-12-18
-published: true
-bigimg: /img/cute_owl.jpg
 tags: ["cmake", "cpp", "openmp"]
 ---
 

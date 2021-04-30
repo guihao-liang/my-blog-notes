@@ -2,8 +2,6 @@
 title: "How to detect compiler architecture when compiling?"
 date: 2019-12-17 09:52:25
 author: Guihao Liang
-published: true
-bigimg: /img/rain_drop.jpg
 tags: ['cmake', 'cpp', 'openmp']
 categories: ['cmake', 'cpp']
 ---

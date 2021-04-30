@@ -2,8 +2,6 @@
 title: "Golang: string reading"
 subtitle: "Golang memory allocation during conversion between string and slice"
 author: Guihao Liang
-published: true
-bigimg: "/img/golang.jpg"
 tags: ['golang']
 date: 2021-01-31 17:51:46
 ---

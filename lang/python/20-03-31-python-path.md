@@ -3,8 +3,6 @@ title: "wheel not installed by pip"
 subtitle: "remember to check PYTHONPATH if package is already satisfied"
 date: 2020-03-26 20:10:49
 author: Guihao Liang
-published: true
-bigimg: "/img/tiles.jpg"
 tags: ['python']
 categories: ['python']
 ---
