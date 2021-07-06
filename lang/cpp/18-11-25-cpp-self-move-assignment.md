@@ -74,7 +74,7 @@ This is commonly called **identity check**. _I will keep metioning this concept 
 
 And I checked the cpp documenation for basic\_string type:
 
-> basic\_string& operator=( basic\_string&& str ) noexcept(/* see below */); (2)	(since C++11)
+> basic\_string& operator=( basic\_string&& str ) noexcept(/*see below*/); (2) (since C++11)
 > 2) Replaces the contents with those of str using move semantics. Leaves str in valid, but unspecified state. If *this and str are the same object, the function has no effect.
 
 Hard to believe, right?
@@ -116,59 +116,59 @@ Let me first check the [gcc basic_string implementation][1]
       operator=(basic_string&& __str)
       noexcept(_Alloc_traits::_S_nothrow_move())
       {
-	if (!_M_is_local() && _Alloc_traits::_S_propagate_on_move_assign()
-	    && !_Alloc_traits::_S_always_equal()
-	    && _M_get_allocator() != __str._M_get_allocator())
-	  {
-	    // Destroy existing storage before replacing allocator.
-	    _M_destroy(_M_allocated_capacity);
-	    _M_data(_M_local_data());
-	    _M_set_length(0);
-	  }
-	// Replace allocator if POCMA is true.
-	std::__alloc_on_move(_M_get_allocator(), __str._M_get_allocator());
+ if (!_M_is_local() && _Alloc_traits::_S_propagate_on_move_assign()
+     && !_Alloc_traits::_S_always_equal()
+     && _M_get_allocator() != __str._M_get_allocator())
+   {
+     // Destroy existing storage before replacing allocator.
+     _M_destroy(_M_allocated_capacity);
+     _M_data(_M_local_data());
+     _M_set_length(0);
+   }
+ // Replace allocator if POCMA is true.
+ std::__alloc_on_move(_M_get_allocator(), __str._M_get_allocator());
 
-	if (__str._M_is_local())
-	  {
-	    // We've always got room for a short string, just copy it.
-	    if (__str.size())
-	      this->_S_copy(_M_data(), __str._M_data(), __str.size());
-	    _M_set_length(__str.size());
-	  }
-	else if (_Alloc_traits::_S_propagate_on_move_assign()
-	    || _Alloc_traits::_S_always_equal()
-	    || _M_get_allocator() == __str._M_get_allocator())
-	  {
-	    // Just move the allocated pointer, our allocator can free it.
-	    pointer __data = nullptr;
-	    size_type __capacity;
-	    if (!_M_is_local())
-	      {
-		if (_Alloc_traits::_S_always_equal())
-		  {
-		    // __str can reuse our existing storage.
-		    __data = _M_data();
-		    __capacity = _M_allocated_capacity;
-		  }
-		else // __str can't use it, so free it.
-		  _M_destroy(_M_allocated_capacity);
-	      }
+ if (__str._M_is_local())
+   {
+     // We've always got room for a short string, just copy it.
+     if (__str.size())
+       this->_S_copy(_M_data(), __str._M_data(), __str.size());
+     _M_set_length(__str.size());
+   }
+ else if (_Alloc_traits::_S_propagate_on_move_assign()
+     || _Alloc_traits::_S_always_equal()
+     || _M_get_allocator() == __str._M_get_allocator())
+   {
+     // Just move the allocated pointer, our allocator can free it.
+     pointer __data = nullptr;
+     size_type __capacity;
+     if (!_M_is_local())
+       {
+  if (_Alloc_traits::_S_always_equal())
+    {
+      // __str can reuse our existing storage.
+      __data = _M_data();
+      __capacity = _M_allocated_capacity;
+    }
+  else // __str can't use it, so free it.
+    _M_destroy(_M_allocated_capacity);
+       }
 
-	    _M_data(__str._M_data());
-	    _M_length(__str.length());
-	    _M_capacity(__str._M_allocated_capacity);
-	    if (__data)
-	      {
-		__str._M_data(__data);
-		__str._M_capacity(__capacity);
-	      }
-	    else
-	      __str._M_data(__str._M_local_buf);
-	  }
-	else // Need to do a deep copy
-	  assign(__str);
-	__str.clear();
-	return *this;
+     _M_data(__str._M_data());
+     _M_length(__str.length());
+     _M_capacity(__str._M_allocated_capacity);
+     if (__data)
+       {
+  __str._M_data(__data);
+  __str._M_capacity(__capacity);
+       }
+     else
+       __str._M_data(__str._M_local_buf);
+   }
+ else // Need to do a deep copy
+   assign(__str);
+ __str.clear();
+ return *this;
       }
 #endif // C++11
 ```
@@ -252,7 +252,7 @@ Fair, how about clang implementation?
 Let me first introduce you what is `false_type` and `true_type`. They are tags wrapping a static const value for false and true, respectively. The tag is ubiquitously used in cpp to guide the template instantiation.
 
 ```cpp
-#define	_LIBCPP_BOOL_CONSTANT(__b) integral_constant<bool,(__b)>
+#define _LIBCPP_BOOL_CONSTANT(__b) integral_constant<bool,(__b)>
 
 template <class _Tp, _Tp __v>
 struct _LIBCPP_TYPE_VIS_ONLY integral_constant

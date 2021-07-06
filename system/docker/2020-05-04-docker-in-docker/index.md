@@ -2,7 +2,7 @@
 layout: post
 title: "Use docker-in-docker in CI/CD"
 subtitle: "A brief intro to dind"
-published: tr
+published: true
 date: 2020-05-04 16:00:44
 tag: ["docker", "gitlab"]
 ---
